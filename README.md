@@ -46,21 +46,28 @@ next_element = iterator.get_next()
 
 def exttact_fn(sample):
 	// parse the tfrecord example of your dataset
+	....
+	
 	// assume the dataset contains three tensors: image, weight_map, seg_mask
 	
 	// instantiate an Augmentor
-	input_list = {'img': image,
-		          'weight': weight_map,
-			      'mask': seg_mask}
+	
+	input_list = {'img': image, 
+	'weight': weight_map, 
+	'mask': seg_mask}
 	a = tfa.Augmentor(input_list, label=['segmentation_mask'])
+	
 	// apply left right flip with probability 0.5
 	a.flip_left_right(probability=0.5)
 	// apply random rotation with probability 0.6
 	a.random_rotate(probability=0.6)
 	// apply elastic deformation
 	a.elastic_deform(probability=0.2, strength=200, scale=20)
-	//return the augmented images as a dictinary with the same keys as input_list
-	return a.out 
+	
+	// dictionary of the augmented images, which has the same keys as input_list
+	augmented = a.out
+	// return tensors in a form you need
+	return augmented['img'], augmented['weight'], augmented['mask'] 
 ```
 
 ### Off-line augmentation
