@@ -1,11 +1,10 @@
 import tensorflow as tf
-from skimage.io import imread, imsave
 import math
-from operations import gaussian, warp_image
+from .operations import gaussian, warp_image
 import numpy as np
 
 
-class tfAugmentor(object):
+class Augmentor(object):
 
     def __init__(self, tensor_list, label=[]):
         self.tensors = {k: tensor for k, tensor in tensor_list.items()}
@@ -134,7 +133,7 @@ class tfAugmentor(object):
 
 
 if __name__ == "__main__":
-    import numpy as np
+    from skimage.io import imread, imsave
     img = imread('./test_images/img.png')
     img = np.expand_dims(np.expand_dims(img, 2), 0)
     mask = imread('./test_images/mask.png')

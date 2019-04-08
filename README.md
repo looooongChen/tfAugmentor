@@ -27,28 +27,19 @@ a = tfa.tfAugmentor(tensor_list, label=['segmentation_mask'])
 
 ### Mirroring
 ```python
-// flip the image left right  
-a.flip_left_right(probability)
-// flip the image up down 
-a.flip_up_down(probability) 
+a.flip_left_right(probability) // flip the image left right  
+a.flip_up_down(probability) // flip the image up down
 ```
 ### Rotating
 ```python
-// rotate by 90 degree clockwise
-a.rotate90(probability)
-// rotate by 180 degree clockwise 
-a.rotate180(probability)
-// rotate by 270 degree clockwise 
-a.rotate270(probability)
-// rotate by *angel* degree clockwise 
-a.rotate(probability, angle)
-// randomly rotate the image 
-a.random_rotate(probability) 
+a.rotate90(probability) // rotate by 90 degree clockwise
+a.rotate180(probability) // rotate by 180 degree clockwise
+a.rotate270(probability) // rotate by 270 degree clockwise
+a.rotate(probability, angle) // rotate by *angel* degree clockwise
+a.random_rotate(probability) // randomly rotate the image
 ```
 ### crop and resize
 ```python
-// randomly crop a sub-image and resize to the same size of the original image
-a.random_crop_resize(probability, scale_range=(0.5, 0.8)) 
-// randomly crop a sub-image of a certain size
-a.crop(probability, size) 
+a.random_crop_resize(probability, scale_range=(0.5, 0.8)) // randomly crop a sub-image and resize to the same size of the original image
+a.crop(probability, size) // randomly crop a sub-image of a certain size
 ```

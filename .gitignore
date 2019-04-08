@@ -1,2 +1,4 @@
 test_images/
-*.png
+dist/
+build/
+tfAugmentor.egg-info/
