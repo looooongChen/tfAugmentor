@@ -14,14 +14,28 @@ To run tfAugmentor properly, the following library should be installed as well:
 - numpy (developed under numpy 1.15)
 
 ## Quick Start
+tfAugmentor aims to implement image augmentations purly as tensorflow graph, so that can be used seamlessly with other tensorflow components, such as tf.Data. 
+But you can also use it independently as a off-line augmentation tool.   
+
+To begin, instantiate a `Augmentor` object and pass a dictionary of tensors to it. These tensors should have the same 4-D shape `[batch, height, width, channels]`. 
+
+To preserve the consistence of label/segmentation maps, the corresponding dict key should be pass to `label` as a list.
+
 ```python
 import tfAugmentor as tfa
 tensor_list = {
 	'images': image_tensor,
 	'segmentation_mask': mask_tensor
 }
-a = tfa.tfAugmentor(tensor_list, label=['segmentation_mask'])
+a = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
 ```
+
+### Use with tf.Data
+
+
+### Off-line augmentation
+
+ 
 
 ## Main Features
 
