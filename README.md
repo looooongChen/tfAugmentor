@@ -54,8 +54,8 @@ def extract_fn(sample):
 	// instantiate an Augmentor
 	
 	input_list = {'img': image,
-	 			  'weight': weight_map,
-				  'mask': seg_mask}
+	'weight': weight_map,
+	'mask': seg_mask}
 	a = tfa.Augmentor(input_list, label=['segmentation_mask'])
 	
 	// apply left right flip with probability 0.5
