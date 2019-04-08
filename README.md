@@ -14,10 +14,10 @@ To run tfAugmentor properly, the following library should be installed as well:
 - numpy (developed under numpy 1.15)
 
 ## Quick Start
-tfAugmentor aims to implement image augmentations purly as tensorflow graph, so that can be used seamlessly with other tensorflow components, such as tf.Data. 
+tfAugmentor aims to implement image augmentations purly as a tensorflow graph, so that it can be used seamlessly with other tensorflow components, such as tf.Data. 
 But you can also use it independently as a off-line augmentation tool.   
 
-To begin, instantiate a `Augmentor` object and pass a dictionary of tensors to it. These tensors should have the same 4-D shape `[batch, height, width, channels]`. 
+To begin, instantiate an `Augmentor` object and pass a dictionary of tensors to it. These tensors should have the same 4-D shape of `[batch, height, width, channels]`. 
 
 To preserve the consistence of label/segmentation maps, the corresponding dict key should be pass to `label` as a list.
 
@@ -32,6 +32,36 @@ a = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
 
 ### Use with tf.Data
 
+An example of data importing with tf.data and tfAugmentor:
+
+```
+ds = tf.data.TFRecordDataset([...])
+ds = ds.map(extract_fn)
+ds = ds.shuffle(buffer_size=500)
+ds = ds.batch(batch_size)
+
+iterator = dataset.make_one_shot_iterator()
+next_element = iterator.get_next()
+
+
+def exttact_fn(sample):
+	// parse the tfrecord example of your dataset
+	// assume the dataset contains three tensors: image, weight_map, seg_mask
+	
+	// instantiate an Augmentor
+	input_list = {'img': image,
+		          'weight': weight_map,
+			      'mask': seg_mask}
+	a = tfa.Augmentor(input_list, label=['segmentation_mask'])
+	// apply left right flip with probability 0.5
+	a.flip_left_right(probability=0.5)
+	// apply random rotation with probability 0.6
+	a.random_rotate(probability=0.6)
+	// apply elastic deformation
+	a.elastic_deform(probability=0.2, strength=200, scale=20)
+	//return the augmented images as a dictinary with the same keys as input_list
+	return a.out 
+```
 
 ### Off-line augmentation
 
@@ -57,3 +87,6 @@ a.random_rotate(probability) // randomly rotate the image
 a.random_crop_resize(probability, scale_range=(0.5, 0.8)) // randomly crop a sub-image and resize to the same size of the original image
 a.crop(probability, size) // randomly crop a sub-image of a certain size
 ```
+
+### elastic deformation
+a.elastic_deform(probability, strength, scale)
