@@ -34,7 +34,7 @@ a = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
 
 An example of data importing with tf.data and tfAugmentor:
 
-```
+```python
 ds = tf.data.TFRecordDataset([...])
 ds = ds.map(extract_fn)
 ds = ds.shuffle(buffer_size=500)
@@ -44,7 +44,8 @@ iterator = dataset.make_one_shot_iterator()
 next_element = iterator.get_next()
 
 
-def exttact_fn(sample):
+def extract_fn(sample):
+	
 	// parse the tfrecord example of your dataset
 	....
 	
@@ -52,9 +53,9 @@ def exttact_fn(sample):
 	
 	// instantiate an Augmentor
 	
-	input_list = {'img': image, 
-	'weight': weight_map, 
-	'mask': seg_mask}
+	input_list = {'img': image,
+	 			  'weight': weight_map,
+				  'mask': seg_mask}
 	a = tfa.Augmentor(input_list, label=['segmentation_mask'])
 	
 	// apply left right flip with probability 0.5
