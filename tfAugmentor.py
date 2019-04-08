@@ -17,51 +17,51 @@ class tfAugmentor(object):
 
         self.tensor_shape = tf.shape(list(self.tensors.values())[0])
 
-    def add_operation(self, funcs, prob):
+    def add_operation(self, funcs, probability):
         r = tf.random_uniform([], 0, 1)
         for k, tensor in self.out.items():
-            self.out[k] = tf.cond(tf.greater(r, prob),
+            self.out[k] = tf.cond(tf.greater(r, probability),
                                   lambda: tensor,
                                   lambda: funcs[k](tensor))
         return self.out
 
-    def flip_left_right(self, prob):
+    def flip_left_right(self, probability):
         funcs = {}
         for k, img_type in self.types.items():
             funcs[k] = tf.image.flip_left_right
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
-    def flip_up_down(self, prob):
+    def flip_up_down(self, probability):
         funcs = {}
         for k, img_type in self.types.items():
             funcs[k] = tf.image.flip_up_down
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
-    def _rotate(self, prob, rotate_k):
+    def _rotate(self, probability, rotate_k):
         funcs = {}
         for k, img_type in self.types.items():
             funcs[k] = lambda input: tf.image.rot90(input, rotate_k)
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
-    def rotate90(self, prob):
-        return self._rotate(prob, 1)
+    def rotate90(self, probability):
+        return self._rotate(probability, 1)
 
-    def rotate180(self, prob):
-        return self._rotate(prob, 2)
+    def rotate180(self, probability):
+        return self._rotate(probability, 2)
 
-    def rotate270(self, prob):
-        return self._rotate(prob, 3)
+    def rotate270(self, probability):
+        return self._rotate(probability, 3)
 
-    def rotate(self, prob, angle):
+    def rotate(self, probability, angle):
         funcs = {}
         for k, img_type in self.types.items():
             if img_type == "label":
                 funcs[k] = lambda input: tf.contrib.image.rotate(input, angle, interpolation='NEAREST')
             else:
                 funcs[k] = lambda input: tf.contrib.image.rotate(input, angle, interpolation='BILINEAR')
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
-    def random_rotate(self, prob):
+    def random_rotate(self, probability):
         funcs = {}
         angle = tf.random_uniform([self.tensor_shape[0]], 0, 2*math.pi)
         for k, img_type in self.types.items():
@@ -69,9 +69,9 @@ class tfAugmentor(object):
                 funcs[k] = lambda input: tf.contrib.image.rotate(input, angle, interpolation='NEAREST')
             else:
                 funcs[k] = lambda input: tf.contrib.image.rotate(input, angle, interpolation='BILINEAR')
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
-    def elastic_deform(self, prob, strength, scale):
+    def elastic_deform(self, probability, strength, scale):
         funcs = {}
         dx = tf.random_uniform([self.tensor_shape[0],
                                 tf.floordiv(self.tensor_shape[1], scale),
@@ -90,13 +90,13 @@ class tfAugmentor(object):
                 funcs[k] = lambda input: warp_image(input, flow, interpolation='knearest')
             else:
                 funcs[k] = lambda input: warp_image(input, flow, interpolation='bilinear')
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
-    def random_crop_resize(self, prob, scale_range=(0.5, 0.8)):
+    def random_crop_resize(self, probability, scale_range=(0.5, 0.8)):
         funcs = {}
-        size = tf.random_uniform([self.tensor_shape[0], 2], scale_range[0], scale_range[1])
-        offset = tf.multiply(1-size, tf.random_uniform([self.tensor_shape[0], 2], 0, 1))
-        boxes = tf.concat([offset, offset+size], axis=1)
+        sz = tf.random_uniform([self.tensor_shape[0], 2], scale_range[0], scale_range[1])
+        offset = tf.multiply(1-sz, tf.random_uniform([self.tensor_shape[0], 2], 0, 1))
+        boxes = tf.concat([offset, offset+sz], axis=1)
         box_ind = tf.range(0, self.tensor_shape[0], delta=1, dtype=tf.int32)
 
         for k, img_type in self.types.items():
@@ -110,27 +110,27 @@ class tfAugmentor(object):
                     tf.image.crop_and_resize(input, boxes, box_ind,
                                              [self.tensor_shape[1], self.tensor_shape[2]],
                                              method='bilinear'), input.dtype)
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
-    def crop(self, prob, sz):
-        sz = np.array(sz, np.int32)
+    def crop(self, probability, size):
+        size = np.array(size, np.int32)
         funcs = {}
-        size = [tf.divide(sz[0], self.tensor_shape[1]), tf.divide(sz[1], self.tensor_shape[2])]
-        size = tf.cast(tf.tile(tf.expand_dims(size, 0), [self.tensor_shape[0], 1]), tf.float32)
-        offset = tf.multiply(1 - size, tf.random_uniform([self.tensor_shape[0], 2], 0, 1))
-        boxes = tf.concat([offset, offset + size], axis=1)
+        sz = [tf.divide(size[0], self.tensor_shape[1]), tf.divide(size[1], self.tensor_shape[2])]
+        sz = tf.cast(tf.tile(tf.expand_dims(sz, 0), [self.tensor_shape[0], 1]), tf.float32)
+        offset = tf.multiply(1 - sz, tf.random_uniform([self.tensor_shape[0], 2], 0, 1))
+        boxes = tf.concat([offset, offset + sz], axis=1)
         box_ind = tf.range(0, self.tensor_shape[0], delta=1, dtype=tf.int32)
 
         for k, img_type in self.types.items():
             if img_type == "label":
                 funcs[k] = lambda input: tf.cast(
-                    tf.image.crop_and_resize(input, boxes, box_ind, sz,
+                    tf.image.crop_and_resize(input, boxes, box_ind, size,
                                              method='nearest'), input.dtype)
             else:
                 funcs[k] = lambda input: tf.cast(
-                    tf.image.crop_and_resize(input, boxes, box_ind, sz,
+                    tf.image.crop_and_resize(input, boxes, box_ind, size,
                                              method='bilinear'), input.dtype)
-        return self.add_operation(funcs, prob)
+        return self.add_operation(funcs, probability)
 
 
 if __name__ == "__main__":
@@ -147,7 +147,7 @@ if __name__ == "__main__":
     tensor_list = {'img': img_tf,
                    'gt': mask_tf}
     aug = tfAugmentor(tensor_list, label=['gt'])
-    out = aug.crop(1, (600, 600))
+    out = aug.random_crop_resize(1)
 
     for i in range(10):
         with tf.Session() as sess:
