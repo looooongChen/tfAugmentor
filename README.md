@@ -46,13 +46,11 @@ next_element = iterator.get_next()
 
 def extract_fn(sample):
 	
-	// parse the tfrecord example of your dataset
+	# parse the tfrecord example of your dataset
 	....
+	# assume the dataset contains three tensors: image, weight_map, seg_mask
 	
-	// assume the dataset contains three tensors: image, weight_map, seg_mask
-	
-	// instantiate an Augmentor
-	
+	# instantiate an Augmentor
 	input_list = {
 		'img': image,
 		'weight': weight_map,
@@ -60,42 +58,39 @@ def extract_fn(sample):
 	}
 	a = tfa.Augmentor(input_list, label=['segmentation_mask'])
 	
-	// apply left right flip with probability 0.5
-	a.flip_left_right(probability=0.5)
-	// apply random rotation with probability 0.6
-	a.random_rotate(probability=0.6)
-	// apply elastic deformation
-	a.elastic_deform(probability=0.2, strength=200, scale=20)
+	a.flip_left_right(probability=0.5) # apply left right flip
+	a.random_rotate(probability=0.6) # apply random rotation
+	a.elastic_deform(probability=0.2, strength=200, scale=20) # apply elastic deformation
 	
-	// dictionary of the augmented images, which has the same keys as input_list
+	# dictionary of the augmented images, which has the same keys as input_list
 	augmented = a.out
-	// return tensors in a form you need
+	# return tensors in a form you need
 	return augmented['img'], augmented['weight'], augmented['mask'] 
 ```
 
 ### Off-line augmentation
 
- 
+
 
 ## Main Features
 
 ### Mirroring
 ```python
-a.flip_left_right(probability) // flip the image left right  
-a.flip_up_down(probability) // flip the image up down
+a.flip_left_right(probability) # flip the image left right  
+a.flip_up_down(probability) # flip the image up down
 ```
 ### Rotating
 ```python
-a.rotate90(probability) // rotate by 90 degree clockwise
-a.rotate180(probability) // rotate by 180 degree clockwise
-a.rotate270(probability) // rotate by 270 degree clockwise
-a.rotate(probability, angle) // rotate by *angel* degree clockwise
-a.random_rotate(probability) // randomly rotate the image
+a.rotate90(probability) # rotate by 90 degree clockwise
+a.rotate180(probability) # rotate by 180 degree clockwise
+a.rotate270(probability) # rotate by 270 degree clockwise
+a.rotate(probability, angle) # rotate by *angel* degree clockwise
+a.random_rotate(probability) # randomly rotate the image
 ```
 ### crop and resize
 ```python
-a.random_crop_resize(probability, scale_range=(0.5, 0.8)) // randomly crop a sub-image and resize to the same size of the original image
-a.crop(probability, size) // randomly crop a sub-image of a certain size
+a.random_crop_resize(probability, scale_range=(0.5, 0.8)) # randomly crop a sub-image and resize to the same size of the original image
+a.crop(probability, size) # randomly crop a sub-image of a certain size
 ```
 
 ### elastic deformation
