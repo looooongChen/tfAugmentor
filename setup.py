@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="tfAugmentor",
-    version="1.0.3",
+    version="1.0.1",
     author="Long Chen",
     author_email="looooong.chen@gmail.com",
     description="An image augmentation library for tensorflow. "

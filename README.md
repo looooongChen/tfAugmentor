@@ -94,4 +94,6 @@ a.crop(probability, size) # randomly crop a sub-image of a certain size
 ```
 
 ### elastic deformation
+```
 a.elastic_deform(probability, strength, scale)
+```
