@@ -131,3 +131,14 @@ class Augmentor(object):
                     tf.image.crop_and_resize(input, boxes, box_ind, size,
                                              method='bilinear'), input.dtype)
         return self.add_operation(funcs, probability)
+
+    def merge(self, augmentors):
+        out = {}
+        for k, tensor in self.out.items():
+            tmp = []
+            tmp.append(tensor)
+            for a in augmentors:
+                assert k in a.out
+                tmp.append(a.out[k])
+            out[k] = tf.concat(tmp, axis=0)
+        return out

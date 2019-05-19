@@ -2,7 +2,7 @@
 still under construction, coming soon
 # tfAugmentor
 An image augmentation library for tensorflow. All operations are implemented as pure tensorflow graph operations. Thus, tfAugmentor can be easily combined with any tensorflow graph, such as tf.Data, for on-the-fly data augmentation. 
-Of cousrse, you can also use it off-line to generate your augmented dataset. An easy to use wrapper for off-line augmentation is provided.
+Of cousrse, you can also use it off-line to generate your augmented dataset. 
 
 ## Installation
 tfAugmentor is written in Python and can be easily installed via:
@@ -27,10 +27,27 @@ tensor_list = {
 	'images': image_tensor,
 	'segmentation_mask': mask_tensor
 }
-a = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
+aug1 = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
 ```
 
-### Use with tf.Data
+Add augmentations and get the output tensor:
+
+```python
+aug1.flip_left_right(probability=0.5) # apply left right flip with probability 0.5
+out1 = aug1.out
+```
+
+Several augmentors with the same structure can be merged, which means you can parallel several pipelines
+
+```python
+aug2 = tfa.Augmentor(tensor_list, label=['segmentation_mask']) # another augmentor with the same input as aug1
+aug2.flip_up_down(probability=0.5) # apply up down flip this time
+aug3 = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
+aug3.elastic_deform(probability=0.5, strength=1, scale=30) # elastic deformation
+out = aug1.merge([aug2, aug3])
+```
+
+### Example with tf.Data
 
 An example of data importing with tf.data and tfAugmentor:
 
@@ -67,10 +84,6 @@ def extract_fn(sample):
 	# return tensors in a form you need
 	return augmented['img'], augmented['weight'], augmented['mask'] 
 ```
-
-### Off-line augmentation
-
-
 
 ## Main Features
 
