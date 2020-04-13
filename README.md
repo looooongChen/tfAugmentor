@@ -19,6 +19,12 @@ But you can also use it independently as a off-line augmentation tool.
 
 To begin, instantiate an `Augmentor` object and pass a dictionary of tensors to it. These tensors should have the same 4-D shape of `[batch, height, width, channels]`. 
 
+- all images processed by the same tfAugmentor object will be kept synchronised, in other words, the same transform will be applied
+- the signature should be complete, but only the terms appear in 'image' or 'label' arguments will be processed 
+- all processed images should have the same size
+
+If you have different sized images or wanna apply 'unsynchronised' tranformations, just create multiple tfAugmentor objects and use them one after another
+
 To preserve the consistence of label/segmentation maps, the corresponding dict key should be pass to `label` as a list.
 
 ```python
