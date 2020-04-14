@@ -5,12 +5,11 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="tfAugmentor",
-    version="1.0.3",
+    version="1.1.1",
     author="Long Chen",
     author_email="looooong.chen@gmail.com",
     description="An image augmentation library for tensorflow. "
-                "All operations are implemented as pure tensorflow graph operations."
-                "Easily used with tf.data.Dataset",
+                "Easy use with tf.data.Dataset",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/looooongChen/tfAugmentor",
@@ -21,7 +20,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        'tensorflow>=1.12.0',
+        'tensorflow>=2.0.0',
         'numpy',
     ],
 )

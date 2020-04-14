@@ -34,7 +34,8 @@ class Runner(Sync):
     def run(self, images):
         occur = tf.random.uniform([], 0, 1) < self.probability 
         for k in images.keys():
-            images[k] = self.Ops[k].run(images[k], occur)
+            if k in self.Ops.keys():
+                images[k] = self.Ops[k].run(images[k], occur)
 
 class RandomRotateRunner(Sync):
 
@@ -42,7 +43,8 @@ class RandomRotateRunner(Sync):
         occur = tf.random.uniform([], 0, 1) < self.probability 
         angle = tf.random.uniform([1], 0, 2*3.1415926)
         for k in images.keys():
-            images[k] = self.Ops[k].run(images[k], angle, occur)
+            if k in self.Ops.keys():
+                images[k] = self.Ops[k].run(images[k], angle, occur)
 
 class RandomCropRunner(Sync):
     
@@ -59,13 +61,14 @@ class RandomCropRunner(Sync):
         return tf.concat([offset, offset+sz], axis=1)
 
     def run(self, images):
-        img = images[list(images.keys())[0]]
+        img = images[list(self.Ops.keys())[0]]
         batch_size = 1 if tf.size(tf.shape(img)) == 3 else tf.shape(img)[0]
 
         occur = tf.random.uniform([], 0, 1) < self.probability 
         bbx = self.get_bbx(batch_size)
         for k in images.keys():
-            images[k] = self.Ops[k].run(images[k], bbx, occur)
+            if k in self.Ops.keys():
+                images[k] = self.Ops[k].run(images[k], bbx, occur)
 
 class ElasticDeformRunner(Sync):
 
@@ -98,12 +101,13 @@ class ElasticDeformRunner(Sync):
         return flow
 
     def run(self, images):
-        img_sz = tf.shape(images[list(images.keys())[0]])
+        img_sz = tf.shape(images[list(self.Ops.keys())[0]])
 
         occur = tf.random.uniform([], 0, 1) < self.probability 
         flow = self.get_flow(img_sz)
         for k in images.keys():
-            images[k] = self.Ops[k].run(images[k], flow, occur)
+            if k in self.Ops.keys():
+                images[k] = self.Ops[k].run(images[k], flow, occur)
 
 #### opeartion classed ####
 
