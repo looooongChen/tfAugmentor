@@ -1,6 +1,5 @@
 import tensorflow as tf
-# import math
-from operations import *
+from tfAugmentor.operations import *
 import numpy as np
 
 
@@ -64,29 +63,25 @@ class Augmentor(object):
 
         def transform(*ds):
             ds_dict = sig2dict(self.signature, ds)
-            # sz = {k: tf.shape(ds_dict[k]) for k in self.transform.keys()}
-            # ElasticDeform.set_image_size(list(sz.values())[0])
+            sz = tf.shape(ds_dict[(self.image + self.label)[0]])
 
             for f in self.funcs:
                 f.run(ds_dict)
-
-            # for k in self.transform.keys():
-            #     for i in range(len(self.transform[k])):
-            #         ds_dict[k] = self.transform[k][i].run(ds_dict[k]) 
             
-            # if keep_size:
-            #     for k in self.transform.keys():
-            #         if k in self.image:
-            #             ds_dict[k] = tf.image.resize(ds_dict[k], sz[k][-3:-1], method = 'bilinear')
-            #         else:
-            #             ds_dict[k] = tf.image.resize(ds_dict[k], sz[k][-3:-1], method = 'nearest')
+            if keep_size:
+                for k in self.image:
+                    ds_dict[k] = reisz_image(ds_dict[k], sz[-3:-1], 'bilinear')
+                for k in self.label:
+                    ds_dict[k] = reisz_image(ds_dict[k], sz[-3:-1], 'nearest')
 
             return dict2sig(self.signature, ds_dict)
 
-        if isinstance(dataset, tf.data.Dataset):
+        if len(self.image + self.label) != 0:
+            if not isinstance(dataset, tf.data.Dataset):
+                dataset = tf.data.Dataset.from_tensor_slices(dataset)
             return dataset.map(transform)
         else:
-            return transform(*dataset)
+            return None
 
     def flip_left_right(self, probability=1):
         r = Runner(probability)

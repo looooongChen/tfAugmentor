@@ -1,8 +1,10 @@
 
-still under construction, coming soon
 # tfAugmentor
-An image augmentation library for tensorflow. All operations are implemented as pure tensorflow graph operations. Thus, tfAugmentor can be easily combined with any tensorflow graph, such as tf.Data, for on-the-fly data augmentation. 
-Of cousrse, you can also use it off-line to generate your augmented dataset. 
+An image augmentation library for tensorflow. The libray is designed to be easily used with tf.data.Dataset. The augmentor accepts tf.data.Dataset object or a nested tuple of numpy array. 
+
+## new features
+- support tf 2.x
+- API change for easier use, can directly process tf.data.Dataset object
 
 ## Installation
 tfAugmentor is written in Python and can be easily installed via:
@@ -10,109 +12,105 @@ tfAugmentor is written in Python and can be easily installed via:
 pip install tfAugmentor
 ```
 To run tfAugmentor properly, the following library should be installed as well:
-- tensorflow (developed under tf 1.12)
-- numpy (developed under numpy 1.15)
+- tensorflow (developed under tf 2.1), should work with 2.x version, 1.x version is not supported
+- numpy (developed under numpy 1.18)
 
 ## Quick Start
-tfAugmentor aims to implement image augmentations purly as a tensorflow graph, so that it can be used seamlessly with other tensorflow components, such as tf.Data. 
-But you can also use it independently as a off-line augmentation tool.   
+tfAugmentor is implemented to work seamlessly with tf.data. The tf.data.Dataset object can be directly processed by tfAugmentor. But you can also use it independently as a off-line augmentation tool.
 
-To begin, instantiate an `Augmentor` object and pass a dictionary of tensors to it. These tensors should have the same 4-D shape of `[batch, height, width, channels]`. 
-
-- all images processed by the same tfAugmentor object will be kept synchronised, in other words, the same transform will be applied
-- the signature should be complete, but only the terms appear in 'image' or 'label' arguments will be processed 
-- all processed images should have the same size
-
-If you have different sized images or wanna apply 'unsynchronised' tranformations, just create multiple tfAugmentor objects and use them one after another
-
-To preserve the consistence of label/segmentation maps, the corresponding dict key should be pass to `label` as a list.
+To instantiate an `Augmentor` object, three arguments are required:
 
 ```python
-import tfAugmentor as tfa
-tensor_list = {
-	'images': image_tensor,
-	'segmentation_mask': mask_tensor
-}
-aug1 = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
+class Augmentor(object):
+    def __init__(self, signature, image=[], label=[]):
+		...
 ```
 
-Add augmentations and get the output tensor:
+- signature: a nested tuple of string, representing the structure of the dataset to be processesd e.g. ('image', 'segmentation')
+- image, label: only the items in these two lists will be augmented, segmentation masks should be put in the label list so that the labels will kept valid
 
+### simple example
 ```python
-aug1.flip_left_right(probability=0.5) # apply left right flip with probability 0.5
-out1 = aug1.out
+import tfAugmentor as tfaug
+
+# new tfAugmentor object
+aug = tfaug.Augmentor(('image', 'semantic_mask'), image=['image'], label=['semantic_mask'])
+
+# add augumentation operations
+aug.flip_left_right(probability=0.5)
+aug.rotate90(probability=0.5)
+aug.elastic_deform(strength=2, scale=20, probability=1)
+
+# assume we have three numpy arrays
+X_image = ... # shape [batch, height, width, channel]
+Y_semantic_mask = ... # shape [batch, height, width, 1]
+
+# create tf.data.Dataset object
+tf_dataset = tf.data.Dataset.from_tensor_slices((X_image, Y_semantic_mask)))
+# do the actual augmentation
+ds1 = aug(tf_dataset, keep_size=True)
+
+# or you can directly pass the numpy arrays, a tf.data.Dataset object will be returned 
+ds2 = aug((X_image, Y_semantic_mask)), keep_size=True)
 ```
 
-Several augmentors with the same structure can be merged, which means you can parallel several pipelines
+Note:
+- All added augmentations will be executed one by one, but you can create multiply tfAugmentor to relize different augmentations in parallel
+- all data should have a 4-D shape of `[batch, height, width, channels]` with the first dimension being the same, unprocessed items (itmes not in the 'image' or 'label' list) can have any dataset shape  
+
+### complex example
 
 ```python
-aug2 = tfa.Augmentor(tensor_list, label=['segmentation_mask']) # another augmentor with the same input as aug1
-aug2.flip_up_down(probability=0.5) # apply up down flip this time
-aug3 = tfa.Augmentor(tensor_list, label=['segmentation_mask'])
-aug3.elastic_deform(probability=0.5, strength=1, scale=30) # elastic deformation
-out = aug1.merge([aug2, aug3])
-```
+import tfAugmentor as tfaug
 
-### Example with tf.Data
+# since 'class' is neither in 'image' nor in 'label', it will not be touched 
+aug1 = tfaug.Augmentor((('image_rgb', 'image_depth'), ('semantic_mask', 'class')), image=['image_rgb', 'image_depth'], label=['semantic_mask'])
+aug1 = tfaug.Augmentor((('image_rgb', 'image_depth'), ('semantic_mask', 'class')), image=['image_rgb', 'image_depth'], label=['semantic_mask'])
 
-An example of data importing with tf.data and tfAugmentor:
+# add different augumentation operations to aug1 and aug2 
+aug1.flip_left_right(probability=0.5)
+aug1.random_crop_resize(sacle_range=(0.7, 0.9), probability=0.5)
+aug2.elastic_deform(strength=2, scale=20, probability=1)
 
-```python
-ds = tf.data.TFRecordDataset([...])
-ds = ds.map(extract_fn)
-ds = ds.shuffle(buffer_size=500)
-ds = ds.batch(batch_size)
+# assume we have the 1000 data samples
+X_rgb = ...  # shape [1000 x 512 x 512 x 3]
+X_depth = ... # shape [1000 x 512 x 512 x 1]
+Y_semantic_mask = ... # shape [1000 x 512 x 512 x 1]
+Y_class = ... # shape [1000 x 1]
 
-iterator = dataset.make_one_shot_iterator()
-next_element = iterator.get_next()
+# create tf.data.Dataset object
+ds_origin = tf.data.Dataset.from_tensor_slices(((X_rgb, X_depth), (Y_semantic_mask, Y_class))))
+# do the actual augmentation
+ds1 = aug1(ds_origin, keep_size=True)
+ds2 = aug2(ds_origin, keep_size=True)
+# combine them
+ds = ds_origin.concatenate(ds1)
+ds = ds.concatenate(ds1)
 
-
-def extract_fn(sample):
-	
-	# parse the tfrecord example of your dataset
-	....
-	# assume the dataset contains three tensors: image, weight_map, seg_mask
-	
-	# instantiate an Augmentor
-	input_list = {
-		'img': image,
-		'weight': weight_map,
-		'mask': seg_mask
-	}
-	a = tfa.Augmentor(input_list, label=['segmentation_mask'])
-	
-	a.flip_left_right(probability=0.5) # apply left right flip
-	a.random_rotate(probability=0.6) # apply random rotation
-	a.elastic_deform(probability=0.2, strength=200, scale=20) # apply elastic deformation
-	
-	# dictionary of the augmented images, which has the same keys as input_list
-	augmented = a.out
-	# return tensors in a form you need
-	return augmented['img'], augmented['weight'], augmented['mask'] 
 ```
 
 ## Main Features
 
 ### Mirroring
 ```python
-a.flip_left_right(probability) # flip the image left right  
-a.flip_up_down(probability) # flip the image up down
+aug.flip_left_right(probability) # flip the image left right  
+aug.flip_up_down(probability) # flip the image up down
 ```
 ### Rotating
 ```python
 a.rotate90(probability) # rotate by 90 degree clockwise
 a.rotate180(probability) # rotate by 180 degree clockwise
 a.rotate270(probability) # rotate by 270 degree clockwise
-a.rotate(probability, angle) # rotate by *angel* degree clockwise
+a.rotate(angle, probability) # rotate by *angel* degree clockwise
 a.random_rotate(probability) # randomly rotate the image
 ```
 ### crop and resize
 ```python
-a.random_crop_resize(probability, scale_range=(0.5, 0.8)) # randomly crop a sub-image and resize to the same size of the original image
-a.crop(probability, size) # randomly crop a sub-image of a certain size
+a.random_crop_resize(scale_range=(0.5, 0.8), probability) # randomly crop a sub-image and resize to the same size of the original image
+a.random_crop_resize(scale_range=0.8, probability) # fixed crop size, random crop position
 ```
 
 ### elastic deformation
 ```
-a.elastic_deform(probability, strength, scale)
+a.elastic_deform(strength, scale, probability)
 ```

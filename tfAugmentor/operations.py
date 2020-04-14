@@ -18,7 +18,7 @@ except:
 
 class Sync(metaclass=ABCMeta):
 
-    def __init__(self, probability):
+    def __init__(self, probability=None):
         self.probability = probability
         self.Ops = {}
 
@@ -92,7 +92,8 @@ class ElasticDeformRunner(Sync):
         dx = gaussian(dx, 0, 5)
         dy = gaussian(dy, 0, 5)
         flow = self.strength * tf.concat([dx, dy], axis=-1)
-        flow = tf.image.resize(flow, size[-3:-1])
+        # flow = tf.image.resize(flow, size[-3:-1])
+        flow = reisz_image(flow, size[-3:-1], interpolation='bilinear')
 
         return flow
 
@@ -116,13 +117,13 @@ class LeftRightFlip(Op):
 
     def run(self, image, occur):
         return tf.image.flip_left_right(image) if occur else image
-        
 
 class UpDownFlip(Op):
     def run(self, image, occur):
         return tf.image.flip_up_down(image) if occur else image
 
 class Rotate90(Op):
+
     def run(self, image, occur):
         return tf.image.rot90(image, 1) if occur else image
 
@@ -131,6 +132,7 @@ class Rotate180(Op):
         return tf.image.rot90(image, 2) if occur else image
 
 class Rotate270(Op):
+
     def run(self, image, occur):
         return tf.image.rot90(image, 3) if occur else image
 
@@ -182,6 +184,34 @@ class ElasticDeform(Op):
 
         return image
 
+def reisz_image(image, size, interpolation='bilinear'):
+        ''' 
+        Args:
+            image: shape of B x H x W x C or H x W x C 
+            size: 1D with 2 elements (newH, newW)
+        '''
+
+        expand = tf.size(tf.shape(image)) != 4
+        batch_size = 1 if expand else tf.shape(image)[0]
+        H, W, channels = tf.shape(image)[-3], tf.shape(image)[-2], tf.shape(image)[-1] 
+        if expand:
+            image = tf.expand_dims(image, axis=0)
+        newH, newW = size[0], size[1]
+        
+        # get the query coordinates
+        grid_x, grid_y = tf.meshgrid(tf.range(newW), tf.range(newH))
+        grid_x = tf.cast(grid_x, tf.float32) * tf.cast(W / newW, tf.float32)
+        grid_y = tf.cast(grid_y, tf.float32) * tf.cast(H / newH, tf.float32)
+        stacked_grid = tf.stack([grid_y, grid_x], axis=2)
+        batched_grid = tf.expand_dims(stacked_grid, axis=0)
+        query_points_on_grid = batched_grid
+        query_points_flattened = tf.reshape(query_points_on_grid, [batch_size, newH * newW, 2])
+        # Compute values at the query points, then reshape the result back to the image grid.
+        image_float = tf.cast(image, tf.float32)
+        interpolated = interpolate(image_float, query_points_flattened, interpolation=interpolation)
+        interpolated = tf.reshape(interpolated, [batch_size, newH, newW, channels])
+
+        return tf.cast(interpolated, image.dtype)
 
 def interpolate(grid, query_points, interpolation='bilinear'):
     """
@@ -270,6 +300,38 @@ def interpolate(grid, query_points, interpolation='bilinear'):
     return interp
 
 
+# def warp_image(image, flow, interpolation="bilinear"):
+#     """
+#     Image warping using per-pixel flow vectors.
+
+#     Args:
+#         image: 4-D `Tensor` with shape [batch, height, width, channels]
+#         flow: A 4-D float `Tensor` with shape `[batch, height, width, 2]`.
+    
+#     Note: the image and flow can be of type tf.half, tf.float32, or tf.float64, and do not necessarily have to be the same type.
+    
+#     Returns:
+#         A 4-D float `Tensor` if shape [batch, height, width, channels] with same type as input image.
+    
+#     Raises:
+#         ValueError: if height < 2 or width < 2 or the inputs have the wrong number of dimensions.
+#     """
+#     sz = tf.shape(image)
+#     batch_size, height, width, channels = sz[0], sz[1], sz[2], sz[3]
+#     # get the query coordinates
+#     grid_x, grid_y = tf.meshgrid(tf.range(width), tf.range(height))
+#     stacked_grid = tf.cast(tf.stack([grid_y, grid_x], axis=2), flow.dtype)
+#     batched_grid = tf.expand_dims(stacked_grid, axis=0)
+#     query_points_on_grid = batched_grid - flow
+#     query_points_flattened = tf.reshape(query_points_on_grid, [batch_size, height * width, 2])
+#     # Compute values at the query points, then reshape the result back to the image grid.
+#     image_float = tf.cast(image, tf.float32)
+#     interpolated = interpolate(image_float, query_points_flattened, interpolation=interpolation)
+#     interpolated = tf.reshape(interpolated, [batch_size, height, width, channels])
+
+#     return tf.cast(interpolated, image.dtype)
+
+
 def warp_image(image, flow, interpolation="bilinear"):
     """
     Image warping using per-pixel flow vectors.
@@ -286,8 +348,10 @@ def warp_image(image, flow, interpolation="bilinear"):
     Raises:
         ValueError: if height < 2 or width < 2 or the inputs have the wrong number of dimensions.
     """
-    sz = tf.shape(image)
-    batch_size, height, width, channels = sz[0], sz[1], sz[2], sz[3]
+    sz = tf.shape(flow)
+    batch_size, height, width = sz[0], sz[1], sz[2]
+    channels = tf.shape(image)[3]
+
     # get the query coordinates
     grid_x, grid_y = tf.meshgrid(tf.range(width), tf.range(height))
     stacked_grid = tf.cast(tf.stack([grid_y, grid_x], axis=2), flow.dtype)
