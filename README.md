@@ -54,6 +54,35 @@ ds1 = aug(tf_dataset, keep_size=True)
 ds2 = aug((X_image, Y_semantic_mask)), keep_size=True)
 ```
 
+If you pass the data as a python dictionary, the signature is not necessary any more. For example:
+
+```python
+import tfAugmentor as tfaug
+
+# new tfAugmentor object
+aug = tfaug.Augmentor(image=['image'], label=['semantic_mask'])
+
+# add augumentation operations
+aug.flip_left_right(probability=0.5)
+aug.rotate90(probability=0.5)
+aug.elastic_deform(strength=2, scale=20, probability=1)
+
+# assume we have three numpy arrays
+X_image = ... # shape [batch, height, width, channel]
+Y_semantic_mask = ... # shape [batch, height, width, 1]
+
+ds_dict = {'image': X_image,
+           'semantic_mask': Y_semantic_mask}
+# create tf.data.Dataset object
+tf_dataset = tf.data.Dataset.from_tensor_slices(ds_dict)
+# do the actual augmentation
+ds1 = aug(tf_dataset, keep_size=True)
+
+# or directly pass the data
+ds2 = aug(ds_dict, keep_size=True)
+```
+
+
 Note:
 - All added augmentations will be executed one by one, but you can create multiply tfAugmentor to relize different augmentations in parallel
 - all data should have a 4-D shape of `[batch, height, width, channels]` with the first dimension being the same, unprocessed items (itmes not in the 'image' or 'label' list) can have any dataset shape  

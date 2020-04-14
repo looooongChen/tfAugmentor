@@ -46,7 +46,7 @@ def dict2sig(signature, ds_dict):
 
 class Augmentor(object):
 
-    def __init__(self, signature, image=[], label=[]):
+    def __init__(self, signature=None, image=[], label=[]):
         self.signature = signature
         self.image = image
         self.label = label
@@ -62,7 +62,10 @@ class Augmentor(object):
         '''
 
         def transform(*ds):
-            ds_dict = sig2dict(self.signature, ds)
+            if isinstance(ds[0], dict):
+                ds_dict = ds[0]
+            else:
+                ds_dict = sig2dict(self.signature, ds)
             sz = tf.shape(ds_dict[(self.image + self.label)[0]])
 
             for f in self.funcs:
@@ -74,7 +77,10 @@ class Augmentor(object):
                 for k in self.label:
                     ds_dict[k] = reisz_image(ds_dict[k], sz[-3:-1], 'nearest')
 
-            return dict2sig(self.signature, ds_dict)
+            if isinstance(ds[0], dict):
+                return ds_dict
+            else:
+                return dict2sig(self.signature, ds_dict)
 
         if len(self.image + self.label) != 0:
             if not isinstance(dataset, tf.data.Dataset):
