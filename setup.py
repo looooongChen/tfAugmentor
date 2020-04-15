@@ -21,6 +21,7 @@ setuptools.setup(
     ],
     install_requires=[
         'tensorflow>=2.0.0',
+        'tensorflow-addons',
         'numpy',
     ],
 )

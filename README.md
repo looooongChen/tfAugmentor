@@ -13,7 +13,9 @@ pip install tfAugmentor
 ```
 To run tfAugmentor properly, the following library should be installed as well:
 - tensorflow (developed under tf 2.1), should work with 2.x version, 1.x version is not supported
+- tensorflow-addons
 - numpy (developed under numpy 1.18)
+- tensorflow-probability (optional)
 
 ## Quick Start
 tfAugmentor is implemented to work seamlessly with tf.data. The tf.data.Dataset object can be directly processed by tfAugmentor. But you can also use it independently as a off-line augmentation tool.
