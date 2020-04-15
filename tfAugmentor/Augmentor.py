@@ -66,6 +66,7 @@ class Augmentor(object):
                 ds_dict = ds[0]
             else:
                 ds_dict = sig2dict(self.signature, ds)
+
             sz = tf.shape(ds_dict[(self.image + self.label)[0]])
 
             for f in self.funcs:

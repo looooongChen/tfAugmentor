@@ -120,11 +120,20 @@ class Op(metaclass=ABCMeta):
 class LeftRightFlip(Op):
 
     def run(self, image, occur):
-        return tf.image.flip_left_right(image) if occur else image
+        expand = tf.size(tf.shape(image)) != 4
+        image = tf.expand_dims(image, axis=0) if expand else image
+        image =  tf.image.flip_left_right(image) if occur else image
+        image = tf.squeeze(image, axis=0) if expand else image
+        return image
+
 
 class UpDownFlip(Op):
     def run(self, image, occur):
-        return tf.image.flip_up_down(image) if occur else image
+        expand = tf.size(tf.shape(image)) != 4
+        image = tf.expand_dims(image, axis=0) if expand else image
+        image = tf.image.flip_up_down(image) if occur else image
+        image = tf.squeeze(image, axis=0) if expand else image
+        return image
 
 class Rotate90(Op):
 
@@ -146,7 +155,11 @@ class Rotate(Op):
         self.interpolation = interpolation
 
     def run(self, image, occur):
-        return tfa.image.rotate(image, self.angle, interpolation=self.interpolation.upper()) if occur else image
+        expand = tf.size(tf.shape(image)) != 4
+        image = tf.expand_dims(image, axis=0) if expand else image
+        image = tfa.image.rotate(image, self.angle, interpolation=self.interpolation.upper()) if occur else image
+        image = tf.squeeze(image, axis=0) if expand else image
+        return image
 
 class RandomRotate(Op):
 
@@ -195,6 +208,9 @@ def reisz_image(image, size, interpolation='bilinear'):
             size: 1D with 2 elements (newH, newW)
         '''
 
+        if tf.reduce_all(tf.shape(image)[-3:-1] == size):
+            return image
+
         expand = tf.size(tf.shape(image)) != 4
         batch_size = 1 if expand else tf.shape(image)[0]
         H, W, channels = tf.shape(image)[-3], tf.shape(image)[-2], tf.shape(image)[-1] 
@@ -214,6 +230,8 @@ def reisz_image(image, size, interpolation='bilinear'):
         image_float = tf.cast(image, tf.float32)
         interpolated = interpolate(image_float, query_points_flattened, interpolation=interpolation)
         interpolated = tf.reshape(interpolated, [batch_size, newH, newW, channels])
+        if expand:
+            interpolated = tf.squeeze(interpolated, axis=0)
 
         return tf.cast(interpolated, image.dtype)
 
