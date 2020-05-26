@@ -137,8 +137,8 @@ a.random_rotate(probability) # randomly rotate the image
 ```
 ### crop and resize
 ```python
-a.random_crop_resize(scale_range=(0.5, 0.8), probability) # randomly crop a sub-image and resize to the same size of the original image
-a.random_crop_resize(scale_range=0.8, probability) # fixed crop size, random crop position
+a.random_crop(scale_range=(0.5, 0.8), probability) # randomly crop a sub-image and resize to the same size of the original image
+a.random_crop(scale_range=0.8, probability) # fixed crop size, random crop position
 ```
 
 ### elastic deformation

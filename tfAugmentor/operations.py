@@ -169,6 +169,7 @@ class RandomRotate(Op):
     def run(self, image, angle, occur):
         expand = tf.size(tf.shape(image)) != 4
         image = tf.expand_dims(image, axis=0) if expand else image
+        print(image.dtype)
         image = tfa.image.rotate(image, angle, interpolation=self.interpolation.upper()) if occur else image
         image = tf.squeeze(image, axis=0) if expand else image
         return image
