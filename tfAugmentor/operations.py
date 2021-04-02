@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import tensorflow as tf
 import numpy as np
+from tfAugmentor.gaussian import *
 
 try:
     import tensorflow_probability as tfp
@@ -125,73 +126,96 @@ class SyncElasticDeformRunner(Sync):
 class Op(metaclass=ABCMeta):
 
     @abstractmethod
-    def run(self):
+    def run(self, item_flatten):
         pass
 
-class LeftRightFlip(Op):
-    def run(self, image, occur):
-        image =  tf.cond(occur, lambda : tf.image.flip_left_right(image), lambda : image)
-        return image
+class SimpleOp(Op):
 
-class UpDownFlip(Op):
-    def run(self, image, occur):
-        image =  tf.cond(occur, lambda : tf.image.flip_up_down(image), lambda : image)
-        return image
+    def __init__(self, func, flatten_signature, image, label, probability=1):
+        self.ops = []
+        self.probability = probability
+        items_aug = label + image
+        for s in flatten_signature:
+            if s in items_aug:
+                self.ops.append(lambda image: func(image))
+            else:
+                self.ops.append(lambda x: x)
 
-class Rotate90(Op):
-    def run(self, image, occur):
-        image =  tf.cond(occur, lambda : tf.image.rot90(image, 1), lambda : image)
-        return image
+    def run(self, item_flatten):
+        occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+        item_flatten = [tf.cond(occur, lambda : op(item), lambda : item) for op, item in zip(self.ops, item_flatten)]
+        return item_flatten
 
-class Rotate180(Op):
-    def run(self, image, occur):
-        image =  tf.cond(occur, lambda : tf.image.rot90(image, 2), lambda : image)
-        return image
+class LeftRightFlip(SimpleOp):
+    def __init__(self, flatten_signature, image, label, probability=1):
+        super().__init__(tf.image.flip_left_right, flatten_signature, image, label, probability)
 
-class Rotate270(Op):
-    def run(self, image, occur):
-        image =  tf.cond(occur, lambda : tf.image.rot90(image, 3), lambda : image)
-        return image
+class UpDownFlip(SimpleOp):
+    def __init__(self, flatten_signature, image, label, probability=1):
+        super().__init__(tf.image.flip_up_down, flatten_signature, image, label, probability)
 
-# class Rotate(Op):
-#     def __init__(self, angle, interpolation='bilinear'):
-#         self.angle = angle
-#         self.interpolation = interpolation
+class Rotate90(SimpleOp):
+    def __init__(self, flatten_signature, image, label, probability=1):
+        super().__init__(lambda img: tf.image.rot90(img, 1), flatten_signature, image, label, probability)
 
-#     def run(self, image, occur):
-#         expand = tf.size(tf.shape(image)) != 4
-#         image = tf.expand_dims(image, axis=0) if expand else image
-#         image = tfa.image.rotate(image, self.angle, interpolation=self.interpolation.upper()) if occur else image
-#         image = tf.squeeze(image, axis=0) if expand else image
-#         return image
+class Rotate180(SimpleOp):
+    def __init__(self, flatten_signature, image, label, probability=1):
+        super().__init__(lambda img: tf.image.rot90(img, 2), flatten_signature, image, label, probability)
+
+class Rotate270(SimpleOp):
+    def __init__(self, flatten_signature, image, label, probability=1):
+        super().__init__(lambda img: tf.image.rot90(img, 3), flatten_signature, image, label, probability)
+
+# class Rotate(SimpleOp):
+#     def __init__(self, flatten_signature, image, label, angle, probability=1):
+#         self.ops = []
+#         self.probability = probability
+#         for s in flatten_signature:
+#             if s in image:
+#                 self.ops.append(lambda image: tfa.image.rotate(image, angle, interpolation='bilinear'.upper(), fill_mode='reflect'))
+#             elif s in label:
+#                 self.ops.append(lambda image: tfa.image.rotate(image, angle, interpolation='nearest'.upper(),fill_mode='reflect'))
+#             else:
+#                 self.ops.append(lambda x: x)
 
 # class RandomRotate(Op):
+#     def __init__(self, flatten_signature, image, label, probability=1):
+#         self.ops = []
+#         self.probability = probability
+#         for s in flatten_signature:
+#             if s in image:
+#                 self.ops.append(lambda image, angle: tfa.image.rotate(image, angle, interpolation='bilinear'.upper(), fill_mode='reflect'))
+#             elif s in label:
+#                 self.ops.append(lambda image, angle: tfa.image.rotate(image, angle, interpolation='nearest'.upper(),fill_mode='reflect'))
+#             else:
+#                 self.ops.append(lambda x, angle: x)
 
-#     def __init__(self, interpolation='bilinear'):
-#         self.interpolation = interpolation
+#     def run(self, item_flatten):
+#         occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+#         angle = tf.random.uniform([], 0, 260)
+#         item_flatten = [tf.cond(occur, lambda : op(item, angle), lambda : item) for op, item in zip(self.ops, item_flatten)]
+#         return item_flatten
 
-#     def run(self, image, angle, occur):
-#         expand = tf.size(tf.shape(image)) != 4
-#         image = tf.expand_dims(image, axis=0) if expand else image
-#         print(image.dtype)
-#         image = tfa.image.rotate(image, angle, interpolation=self.interpolation.upper()) if occur else image
-#         image = tf.squeeze(image, axis=0) if expand else image
-#         return image
+class GaussianBlur(SimpleOp):
 
-class GaussianBlur(Op):
+    def __init__(self, flatten_signature, image, label, sigma, probability=1):
+        self.ops = []
+        self.probability = probability
+        for s in flatten_signature:
+            if s in image:
+                self.ops.append(lambda image: gaussian_blur(image, sigma))
+            else:
+                self.ops.append(lambda x: x)
 
-    def __init__(self, sigma=2):
-        self.sigma = sigma
-
-    def run(self, image, occur):
-        # full_dim = tf.equal(tf.size(tf.shape(image)), 4)
-        shape = image.get_shape()
-        image_b = tf.expand_dims(image, axis=0) if shape.ndims == 3 else image
-        image_b = tf.cast(image_b, tf.float32)
-        image_b = tf.cond(occur, lambda: gaussian(image_b, sigma=self.sigma), lambda: image_b)
-        image_b = tf.squeeze(image_b, axis=0) if shape.ndims == 3 else image
-        image_b = tf.cast(image_b, image.dtype)
-        return image_b
+    # def run(self, image, occur):
+    #     # full_dim = tf.equal(tf.size(tf.shape(image)), 4)
+    #     shape = image.get_shape()
+    #     image_b = tf.expand_dims(image, axis=0) if shape.ndims == 3 else image
+    #     image_b = tf.cast(image_b, tf.float32)
+    #     image_b = tf.cond(occur, lambda: gaussian(image_b, sigma=self.sigma), lambda: image_b)
+    #     image_b = tf.squeeze(image_b, axis=0) if shape.ndims == 3 else image
+    #     image_b = tf.cast(image_b, image.dtype)
+    #     return image_b
 
 class RandomCrop(Op):
 
@@ -373,26 +397,7 @@ def warp_image(image, flow, interpolation="bilinear"):
 
     return tf.cast(interpolated, image.dtype)
 
-def gaussian_kernel(sigma):
-    size = round(sigma*3)
-    g = tf.range(-size, size, dtype=tf.float32)
-    g = tf.math.exp(-(tf.pow(g, 2) / (2 * tf.pow(tf.cast(sigma, tf.float32), 2))))
-    g_kernel = tf.tensordot(g, g, axes=0)
-    return g_kernel / tf.reduce_sum(g_kernel)
-     
-def gaussian(image, sigma):
-    g_kernel = gaussian_kernel(sigma)
-    g_kernel = tf.expand_dims(tf.expand_dims(g_kernel, -1), -1)
-    # g_kernel = tf.repeat(g_kernel, image.get_shape()[-1], axis=-1)
-    # g_kernel = tf.cast(g_kernel, image.dtype)
-    # blurred = tf.nn.conv2d(image, g_kernel, strides=[1, 1, 1, 1], padding="SAME")
-    blurred = []
-    for i in range(image.get_shape()[-1]):
-        img_slice = tf.expand_dims(image[:,:,:,i], axis=-1)
-        blurred.append(tf.nn.conv2d(img_slice, g_kernel, strides=[1, 1, 1, 1], padding="SAME"))
-    # print('kernal', g_kernel.get_shape())
-    blurred = tf.concat(blurred, axis=-1)
-    return blurred
+
 
 if __name__ == "__main__":
     a = gaussian_kernel(2, 5)

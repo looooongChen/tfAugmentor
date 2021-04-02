@@ -20,15 +20,17 @@ aug = tfaug.Augmentor(('image', ('mask1', 'mask2')), image=['image'], label=['ma
 # aug.rotate90(probability=0.5)
 # aug.rotate180(probability=0.5)
 # aug.rotate270(probability=0.5)
-# aug.rotate(70, probability=1)
+aug.gaussian_blur(sigma=5)
+
+# aug.rotate(70, probability=0.5)
 # aug.random_rotate(probability=1)
 # aug.random_crop([0.5, 0.8], probability=1, preserve_aspect_ratio=True)
 # aug.elastic_deform(strength=3, scale=10, probability=1)
-aug.gaussian_blur(sigma=5)
 
 
 # ds = aug((imgs, (masks1, masks2)), keep_size=False)
 ds = tf.data.Dataset.from_tensor_slices((imgs, (masks1, masks2)))
+# ds = tf.data.Dataset.from_tensor_slices((imgs, masks2, masks1))
 ds_aug = aug(ds, keep_size=False)
 # ds_aug2 = aug2(ds, keep_size=False)
 
