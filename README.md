@@ -24,7 +24,7 @@ To instantiate an `Augmentor` object, three arguments are required:
 
 ```python
 class Augmentor(object):
-    def __init__(self, signature, image=[], label=[]):
+    def __init__(self, signature, image=[], label_map=[]):
 		...
 ```
 
@@ -43,7 +43,7 @@ aug.flip_left_right(probability=0.5)
 aug.rotate90(probability=0.5)
 aug.elastic_deform(strength=2, scale=20, probability=1)
 
-# assume we have three numpy arrays
+# assume we have two numpy arrays
 X_image = ... # shape [batch, height, width, channel]
 Y_semantic_mask = ... # shape [batch, height, width, 1]
 

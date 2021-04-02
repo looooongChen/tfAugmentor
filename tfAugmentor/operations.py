@@ -29,48 +29,57 @@ class Sync(metaclass=ABCMeta):
     def run(self):
         pass
 
-class Runner(Sync):
+class SyncRunner(Sync):
 
     def run(self, images):
-        occur = tf.random.uniform([], 0, 1) < self.probability 
+        occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
         for k in images.keys():
             if k in self.Ops.keys():
                 images[k] = self.Ops[k].run(images[k], occur)
 
-class RandomRotateRunner(Sync):
+class SyncRandomRotateRunner(Sync):
 
     def run(self, images):
-        occur = tf.random.uniform([], 0, 1) < self.probability 
+        # occur = tf.random.uniform([], 0, 1) < self.probability 
+        occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
         angle = tf.random.uniform([1], 0, 2*3.1415926)
         for k in images.keys():
             if k in self.Ops.keys():
                 images[k] = self.Ops[k].run(images[k], angle, occur)
 
-class RandomCropRunner(Sync):
+class SyncRandomCropRunner(Sync):
     
-    def __init__(self, probability, scale):
+    def __init__(self, probability, scale, preserve_aspect_ratio):
         super().__init__(probability)
         if isinstance(scale, tuple) or isinstance(scale, list):
             self.scale = scale
         else:
             self.scale = (scale, scale)
+        self.preserve_aspect_ratio = preserve_aspect_ratio
 
     def get_bbx(self, batch_size):
         sz = tf.random.uniform([batch_size, 2], self.scale[0], self.scale[1])
+        if self.preserve_aspect_ratio:
+            sz = tf.random.uniform([batch_size, 1], self.scale[0], self.scale[1])
+            sz = tf.concat([sz, sz], axis=-1)
+        else:
+            sz = tf.random.uniform([batch_size, 2], self.scale[0], self.scale[1])
         offset = tf.multiply(1-sz, tf.random.uniform([batch_size, 2], 0, 1))
         return tf.concat([offset, offset+sz], axis=1)
 
     def run(self, images):
         img = images[list(self.Ops.keys())[0]]
-        batch_size = 1 if tf.size(tf.shape(img)) == 3 else tf.shape(img)[0]
+        full_dim = tf.equal(tf.size(tf.shape(img)), 4)
+        batch_size = tf.cond(full_dim, lambda : tf.shape(img)[0], lambda : 1)
 
-        occur = tf.random.uniform([], 0, 1) < self.probability 
+        # occur = tf.random.uniform([], 0, 1) < self.probability 
+        occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
         bbx = self.get_bbx(batch_size)
         for k in images.keys():
             if k in self.Ops.keys():
                 images[k] = self.Ops[k].run(images[k], bbx, occur)
 
-class ElasticDeformRunner(Sync):
+class SyncElasticDeformRunner(Sync):
 
     def __init__(self, probability, strength, scale):
         super().__init__(probability)
@@ -81,8 +90,8 @@ class ElasticDeformRunner(Sync):
 
         ''' size: shape of a 3D or 4D tensor '''
 
-        expand = tf.size(size) != 4
-        batch = 1 if expand else size[0] 
+
+        batch = tf.cond(tf.size(size) != 4, lambda : 1, lambda : size[0]) 
 
         dx = tf.random.uniform([batch,
                                 tf.math.floordiv(size[-3], self.scale),
@@ -96,15 +105,17 @@ class ElasticDeformRunner(Sync):
         dy = gaussian(dy, 0, 5)
         flow = self.strength * tf.concat([dx, dy], axis=-1)
         # flow = tf.image.resize(flow, size[-3:-1])
-        flow = reisz_image(flow, size[-3:-1], interpolation='bilinear')
+        flow = resize_image(flow, size[-3:-1], interpolation='bilinear')
 
         return flow
 
     def run(self, images):
-        img_sz = tf.shape(images[list(self.Ops.keys())[0]])
 
-        occur = tf.random.uniform([], 0, 1) < self.probability 
+        occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+        # print('===', images[list(self.Ops.keys())[0]].shape)
+        img_sz = images[list(self.Ops.keys())[0]].shape
         flow = self.get_flow(img_sz)
+        print(flow.shape)
         for k in images.keys():
             if k in self.Ops.keys():
                 images[k] = self.Ops[k].run(images[k], flow, occur)
@@ -118,61 +129,69 @@ class Op(metaclass=ABCMeta):
         pass
 
 class LeftRightFlip(Op):
-
     def run(self, image, occur):
-        expand = tf.size(tf.shape(image)) != 4
-        image = tf.expand_dims(image, axis=0) if expand else image
-        image =  tf.image.flip_left_right(image) if occur else image
-        image = tf.squeeze(image, axis=0) if expand else image
+        image =  tf.cond(occur, lambda : tf.image.flip_left_right(image), lambda : image)
         return image
-
 
 class UpDownFlip(Op):
     def run(self, image, occur):
-        expand = tf.size(tf.shape(image)) != 4
-        image = tf.expand_dims(image, axis=0) if expand else image
-        image = tf.image.flip_up_down(image) if occur else image
-        image = tf.squeeze(image, axis=0) if expand else image
+        image =  tf.cond(occur, lambda : tf.image.flip_up_down(image), lambda : image)
         return image
 
 class Rotate90(Op):
-
     def run(self, image, occur):
-        return tf.image.rot90(image, 1) if occur else image
+        image =  tf.cond(occur, lambda : tf.image.rot90(image, 1), lambda : image)
+        return image
 
 class Rotate180(Op):
     def run(self, image, occur):
-        return tf.image.rot90(image, 2) if occur else image
+        image =  tf.cond(occur, lambda : tf.image.rot90(image, 2), lambda : image)
+        return image
 
 class Rotate270(Op):
-
     def run(self, image, occur):
-        return tf.image.rot90(image, 3) if occur else image
-
-class Rotate(Op):
-    def __init__(self, angle, interpolation='bilinear'):
-        self.angle = angle
-        self.interpolation = interpolation
-
-    def run(self, image, occur):
-        expand = tf.size(tf.shape(image)) != 4
-        image = tf.expand_dims(image, axis=0) if expand else image
-        image = tfa.image.rotate(image, self.angle, interpolation=self.interpolation.upper()) if occur else image
-        image = tf.squeeze(image, axis=0) if expand else image
+        image =  tf.cond(occur, lambda : tf.image.rot90(image, 3), lambda : image)
         return image
 
-class RandomRotate(Op):
+# class Rotate(Op):
+#     def __init__(self, angle, interpolation='bilinear'):
+#         self.angle = angle
+#         self.interpolation = interpolation
 
-    def __init__(self, interpolation='bilinear'):
-        self.interpolation = interpolation
+#     def run(self, image, occur):
+#         expand = tf.size(tf.shape(image)) != 4
+#         image = tf.expand_dims(image, axis=0) if expand else image
+#         image = tfa.image.rotate(image, self.angle, interpolation=self.interpolation.upper()) if occur else image
+#         image = tf.squeeze(image, axis=0) if expand else image
+#         return image
 
-    def run(self, image, angle, occur):
-        expand = tf.size(tf.shape(image)) != 4
-        image = tf.expand_dims(image, axis=0) if expand else image
-        print(image.dtype)
-        image = tfa.image.rotate(image, angle, interpolation=self.interpolation.upper()) if occur else image
-        image = tf.squeeze(image, axis=0) if expand else image
-        return image
+# class RandomRotate(Op):
+
+#     def __init__(self, interpolation='bilinear'):
+#         self.interpolation = interpolation
+
+#     def run(self, image, angle, occur):
+#         expand = tf.size(tf.shape(image)) != 4
+#         image = tf.expand_dims(image, axis=0) if expand else image
+#         print(image.dtype)
+#         image = tfa.image.rotate(image, angle, interpolation=self.interpolation.upper()) if occur else image
+#         image = tf.squeeze(image, axis=0) if expand else image
+#         return image
+
+class GaussianBlur(Op):
+
+    def __init__(self, sigma=2):
+        self.sigma = sigma
+
+    def run(self, image, occur):
+        # full_dim = tf.equal(tf.size(tf.shape(image)), 4)
+        shape = image.get_shape()
+        image_b = tf.expand_dims(image, axis=0) if shape.ndims == 3 else image
+        image_b = tf.cast(image_b, tf.float32)
+        image_b = tf.cond(occur, lambda: gaussian(image_b, sigma=self.sigma), lambda: image_b)
+        image_b = tf.squeeze(image_b, axis=0) if shape.ndims == 3 else image
+        image_b = tf.cast(image_b, image.dtype)
+        return image_b
 
 class RandomCrop(Op):
 
@@ -180,13 +199,13 @@ class RandomCrop(Op):
         self.interpolation = interpolation
 
     def run(self, image, bbx, occur):
-        expand = tf.size(tf.shape(image)) != 4
-        batch_size = 1 if expand else tf.shape(image)[0]
+        full_dim = tf.equal(tf.size(tf.shape(image)), 4)
+        batch_size = tf.cond(full_dim, lambda : tf.shape(image)[0], lambda : 1)
         bbx_ind = tf.range(0, batch_size, delta=1, dtype=tf.int32)
 
-        image = tf.expand_dims(image, axis=0) if expand else image
-        image = tf.cast(tf.image.crop_and_resize(image, bbx, bbx_ind, tf.shape(image)[1:3], method=self.interpolation.lower()), image.dtype) if occur else image
-        image = tf.squeeze(image, axis=0) if expand else image
+        image = tf.cond(full_dim, lambda : image, lambda : tf.expand_dims(image, axis=0))
+        image = tf.cond(occur, lambda : tf.cast(tf.image.crop_and_resize(image, bbx, bbx_ind, tf.shape(image)[1:3], method=self.interpolation.lower()), image.dtype), lambda : image)
+        image = tf.cond(full_dim, lambda : image, lambda : tf.squeeze(image, axis=0))
         return image
 
 class ElasticDeform(Op):
@@ -195,28 +214,27 @@ class ElasticDeform(Op):
         self.interpolation = interpolation
 
     def run(self, image, flow, occur):
-        expand = tf.size(tf.shape(image)) != 4
-        image = tf.expand_dims(image, axis=0) if expand else image
-        image = warp_image(image, flow, interpolation=self.interpolation.lower()) if occur else image
-        image = tf.squeeze(image, axis=0) if expand else image
+        full_dim = tf.equal(tf.size(tf.shape(image)), 4)
+        image = tf.cond(full_dim, lambda: image, lambda: tf.expand_dims(image, axis=0))
+        image = tf.cond(occur, lambda : warp_image(image, flow, interpolation=self.interpolation.lower()), lambda : image)
+        image = tf.cond(full_dim, lambda: image, lambda: tf.squeeze(image, axis=0))
 
         return image
 
-def reisz_image(image, size, interpolation='bilinear'):
+def resize_image(image, size, interpolation='bilinear'):
         ''' 
         Args:
             image: shape of B x H x W x C or H x W x C 
             size: 1D with 2 elements (newH, newW)
         '''
 
-        if tf.reduce_all(tf.shape(image)[-3:-1] == size):
-            return image
+        # if tf.reduce_all(tf.shape(image)[-3:-1] == size):
+        #     return image
 
-        expand = tf.size(tf.shape(image)) != 4
-        batch_size = 1 if expand else tf.shape(image)[0]
+        full_dim = tf.equal(tf.size(tf.shape(image)), 4)
+        batch_size = tf.cond(full_dim, lambda : tf.shape(image)[0], lambda : 1)
         H, W, channels = tf.shape(image)[-3], tf.shape(image)[-2], tf.shape(image)[-1] 
-        if expand:
-            image = tf.expand_dims(image, axis=0)
+        image = tf.cond(full_dim, lambda : image, lambda : tf.expand_dims(image, axis=0))
         newH, newW = size[0], size[1]
         
         # get the query coordinates
@@ -231,8 +249,7 @@ def reisz_image(image, size, interpolation='bilinear'):
         image_float = tf.cast(image, tf.float32)
         interpolated = interpolate(image_float, query_points_flattened, interpolation=interpolation)
         interpolated = tf.reshape(interpolated, [batch_size, newH, newW, channels])
-        if expand:
-            interpolated = tf.squeeze(interpolated, axis=0)
+        interpolated = tf.cond(full_dim, lambda : image, lambda : tf.squeeze(interpolated, axis=0))
 
         return tf.cast(interpolated, image.dtype)
 
@@ -323,38 +340,6 @@ def interpolate(grid, query_points, interpolation='bilinear'):
     return interp
 
 
-# def warp_image(image, flow, interpolation="bilinear"):
-#     """
-#     Image warping using per-pixel flow vectors.
-
-#     Args:
-#         image: 4-D `Tensor` with shape [batch, height, width, channels]
-#         flow: A 4-D float `Tensor` with shape `[batch, height, width, 2]`.
-    
-#     Note: the image and flow can be of type tf.half, tf.float32, or tf.float64, and do not necessarily have to be the same type.
-    
-#     Returns:
-#         A 4-D float `Tensor` if shape [batch, height, width, channels] with same type as input image.
-    
-#     Raises:
-#         ValueError: if height < 2 or width < 2 or the inputs have the wrong number of dimensions.
-#     """
-#     sz = tf.shape(image)
-#     batch_size, height, width, channels = sz[0], sz[1], sz[2], sz[3]
-#     # get the query coordinates
-#     grid_x, grid_y = tf.meshgrid(tf.range(width), tf.range(height))
-#     stacked_grid = tf.cast(tf.stack([grid_y, grid_x], axis=2), flow.dtype)
-#     batched_grid = tf.expand_dims(stacked_grid, axis=0)
-#     query_points_on_grid = batched_grid - flow
-#     query_points_flattened = tf.reshape(query_points_on_grid, [batch_size, height * width, 2])
-#     # Compute values at the query points, then reshape the result back to the image grid.
-#     image_float = tf.cast(image, tf.float32)
-#     interpolated = interpolate(image_float, query_points_flattened, interpolation=interpolation)
-#     interpolated = tf.reshape(interpolated, [batch_size, height, width, channels])
-
-#     return tf.cast(interpolated, image.dtype)
-
-
 def warp_image(image, flow, interpolation="bilinear"):
     """
     Image warping using per-pixel flow vectors.
@@ -388,21 +373,26 @@ def warp_image(image, flow, interpolation="bilinear"):
 
     return tf.cast(interpolated, image.dtype)
 
-def gaussian_kernel(mean, std):
-    size = round(std*3)
-    if tfp_found:
-        d = tfp.distributions.Normal(mean/1.0, std/1.0)
-    else:
-        d = tf.compat.v1.distributions.Normal(mean/1.0, std/1.0)
-    vals = d.prob(tf.range(start=-size, limit=size + 1, dtype=tf.float32))
-    gauss_kernel = tf.einsum('i,j->ij', vals, vals)
-    return gauss_kernel / tf.reduce_sum(gauss_kernel)
-
-
-def gaussian(image, mean, std):
-    gauss_kernel = gaussian_kernel(mean, std)
-    kernel = tf.expand_dims(tf.expand_dims(gauss_kernel, -1), -1)
-    return tf.nn.conv2d(image, kernel, strides=[1, 1, 1, 1], padding="SAME")
+def gaussian_kernel(sigma):
+    size = round(sigma*3)
+    g = tf.range(-size, size, dtype=tf.float32)
+    g = tf.math.exp(-(tf.pow(g, 2) / (2 * tf.pow(tf.cast(sigma, tf.float32), 2))))
+    g_kernel = tf.tensordot(g, g, axes=0)
+    return g_kernel / tf.reduce_sum(g_kernel)
+     
+def gaussian(image, sigma):
+    g_kernel = gaussian_kernel(sigma)
+    g_kernel = tf.expand_dims(tf.expand_dims(g_kernel, -1), -1)
+    # g_kernel = tf.repeat(g_kernel, image.get_shape()[-1], axis=-1)
+    # g_kernel = tf.cast(g_kernel, image.dtype)
+    # blurred = tf.nn.conv2d(image, g_kernel, strides=[1, 1, 1, 1], padding="SAME")
+    blurred = []
+    for i in range(image.get_shape()[-1]):
+        img_slice = tf.expand_dims(image[:,:,:,i], axis=-1)
+        blurred.append(tf.nn.conv2d(img_slice, g_kernel, strides=[1, 1, 1, 1], padding="SAME"))
+    # print('kernal', g_kernel.get_shape())
+    blurred = tf.concat(blurred, axis=-1)
+    return blurred
 
 if __name__ == "__main__":
     a = gaussian_kernel(2, 5)

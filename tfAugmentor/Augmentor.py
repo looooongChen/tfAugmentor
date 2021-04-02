@@ -60,8 +60,8 @@ class Augmentor(object):
             nested stucture: should match the signature, image data of size B x H x W x C 
             keep_size: keep image size or not
         '''
-
         def transform(*ds):
+
             if isinstance(ds[0], dict):
                 ds_dict = ds[0]
             else:
@@ -71,12 +71,12 @@ class Augmentor(object):
 
             for f in self.funcs:
                 f.run(ds_dict)
-            
-            if keep_size:
-                for k in self.image:
-                    ds_dict[k] = reisz_image(ds_dict[k], sz[-3:-1], 'bilinear')
-                for k in self.label:
-                    ds_dict[k] = reisz_image(ds_dict[k], sz[-3:-1], 'nearest')
+        
+            # if keep_size:
+            #     for k in self.image:
+            #         ds_dict[k] = resize_image(ds_dict[k], sz[-3:-1], 'bilinear')
+            #     for k in self.label:
+            #         ds_dict[k] = resize_image(ds_dict[k], sz[-3:-1], 'nearest')
 
             if isinstance(ds[0], dict):
                 return ds_dict
@@ -86,66 +86,73 @@ class Augmentor(object):
         if len(self.image + self.label) != 0:
             if not isinstance(dataset, tf.data.Dataset):
                 dataset = tf.data.Dataset.from_tensor_slices(dataset)
-            return dataset.map(transform)
+            return dataset.map(tf.autograph.experimental.do_not_convert(transform))
         else:
             return None
+    
 
     def flip_left_right(self, probability=1):
-        r = Runner(probability)
+        r = SyncRunner(probability)
         for k in self.label + self.image:
             r.sync(k, LeftRightFlip())
         self.funcs.append(r)
 
     def flip_up_down(self, probability=1):
-        r = Runner(probability)
+        r = SyncRunner(probability)
         for k in self.label + self.image:
             r.sync(k, UpDownFlip())
         self.funcs.append(r)  
 
     def rotate90(self, probability=1):
-        r = Runner(probability)
+        r = SyncRunner(probability)
         for k in self.label + self.image:
             r.sync(k, Rotate90())
         self.funcs.append(r) 
 
     def rotate180(self, probability=1):
-        r = Runner(probability)
+        r = SyncRunner(probability)
         for k in self.label + self.image:
             r.sync(k, Rotate180())
         self.funcs.append(r) 
 
     def rotate270(self, probability=1):
-        r = Runner(probability)
+        r = SyncRunner(probability)
         for k in self.label + self.image:
             r.sync(k, Rotate270())
         self.funcs.append(r) 
 
     def rotate(self, angle, probability=1):
-        r = Runner(probability)
+        r = SyncRunner(probability)
         for k in self.image:
             r.sync(k, Rotate(angle, 'bilinear'))
         for k in self.label:
             r.sync(k, Rotate(angle, 'nearest'))
         self.funcs.append(r)
 
-    def random_rotate(self, probability=1):
-        r = RandomRotateRunner(probability)
-        for k in self.image:
-            r.sync(k, RandomRotate('bilinear'))
-        for k in self.label:
-            r.sync(k, RandomRotate('nearest'))
-        self.funcs.append(r)
+    # def random_rotate(self, probability=1):
+    #     r = RandomRotateRunner(probability)
+    #     for k in self.image:
+    #         r.sync(k, RandomRotate('bilinear'))
+    #     for k in self.label:
+    #         r.sync(k, RandomRotate('nearest'))
+    #     self.funcs.append(r)
 
-    def random_crop(self, scale_range, probability=1):
-        r = RandomCropRunner(probability, scale_range)
+    def random_crop(self, scale_range, probability=1, preserve_aspect_ratio=False):
+        r = SyncRandomCropRunner(probability, scale_range, preserve_aspect_ratio)
         for k in self.image:
             r.sync(k, RandomCrop('bilinear'))
         for k in self.label:
             r.sync(k, RandomCrop('nearest'))
         self.funcs.append(r)
+    
+    def gaussian_blur(self, sigma=2, probability=1):
+        r = SyncRunner(probability)
+        for k in self.image:
+            r.sync(k, GaussianBlur(sigma=sigma))
+        self.funcs.append(r) 
 
     def elastic_deform(self, strength, scale, probability=1):
-        r = ElasticDeformRunner(probability, strength, scale)
+        r = SyncElasticDeformRunner(probability, strength, scale)
         for k in self.image:
             r.sync(k, ElasticDeform('bilinear'))
         for k in self.label:
@@ -155,31 +162,31 @@ class Augmentor(object):
     
 
 if __name__ == "__main__":
-    # import numpy as np
-    # s = ('a', ('b', 'c'), ('d', ('e', 'f')))
-    # ds = (1, (2, 3), (4, (5,6)))
-    # ds_d = sig2dict(s, ds)
-    # print(ds_d)
-    # print(dict2sig(s, ds_d))
-    # for a in unzip_signature(s):
-    #     print(a)
+    import numpy as np
+    s = ('a', ('b', 'c'), ('d', ('e', 'f')))
+    ds = (1, (2, 3), (4, (5,6)))
+    ds_d = sig2dict(s, ds)
+    print(ds_d)
+    print(dict2sig(s, ds_d))
+    for a in unzip_signature(s):
+        print(a)
 
-    # from skimage.io import imread, imsave
-    # import numpy as np
-    # img = imread('./demo/cell.png')
-    # imgs = np.repeat(np.expand_dims(img, axis=0), 12, axis=0) 
-    # mask = imread('./demo/mask.png') 
-    # masks = np.repeat(np.expand_dims(mask, axis=0), 12, axis=0) 
+    from skimage.io import imread, imsave
+    import numpy as np
+    img = imread('./demo/cell.png')
+    imgs = np.repeat(np.expand_dims(img, axis=0), 12, axis=0) 
+    mask = imread('./demo/mask.png') 
+    masks = np.repeat(np.expand_dims(mask, axis=0), 12, axis=0) 
 
-    # ds = tf.data.Dataset.from_tensor_slices((imgs, masks))
-    # aa = Augmentor(('image', 'mask'))
-    # aa.flip_left_right(probability=1)
-    # ds = aa(ds)
-    # i = 0
-    # for img, mask in ds:
-    #     imsave('./img_'+str(i)+'.png', np.squeeze(img))
-    #     imsave('./mask_'+str(i)+'.png', np.squeeze(mask))
-    #     i += 1
+    ds = tf.data.Dataset.from_tensor_slices((imgs, masks))
+    aa = Augmentor(('image', 'mask'))
+    aa.flip_left_right(probability=1)
+    ds = aa(ds)
+    i = 0
+    for img, mask in ds:
+        imsave('./img_'+str(i)+'.png', np.squeeze(img))
+        imsave('./mask_'+str(i)+'.png', np.squeeze(mask))
+        i += 1
 
     t = LeftRightFlip()
 
