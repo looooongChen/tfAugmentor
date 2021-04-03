@@ -13,9 +13,7 @@ pip install tfAugmentor
 ```
 To run tfAugmentor properly, the following library should be installed as well:
 - tensorflow (developed under tf 2.1), should work with 2.x version, 1.x version is not supported
-- tensorflow-addons
-- numpy (developed under numpy 1.18)
-- tensorflow-probability (optional)
+- numpy (currently numpy=1.20 leads error of tf.meshgrid, please use another version)
 
 ## Quick Start
 tfAugmentor is implemented to work seamlessly with tf.data. The tf.data.Dataset object can be directly processed by tfAugmentor. But you can also use it independently as a off-line augmentation tool.
@@ -145,3 +143,6 @@ a.random_crop(scale_range=0.8, probability) # fixed crop size, random crop posit
 ```
 a.elastic_deform(strength, scale, probability)
 ```
+
+## Caution
+- If .batch() of tf.data.Dataset is used before augmentation, please set drop_remainder=True. Oherwise, the batch_size will be set to None. The augmention of tfAgmentor requires the batch_size dimension    

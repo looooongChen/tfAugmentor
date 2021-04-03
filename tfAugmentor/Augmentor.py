@@ -13,18 +13,21 @@ class Augmentor(object):
         self.ops = []
         # self.image_size = image_size
     
-    def __call__(self, dataset, keep_size=True):
+    def __call__(self, dataset):
 
         '''
         Args:
             dataset: a tf.data.Dataset object that matches the signature
-            keep_size: keep image size or not
         '''
         def transform(*item):
+            # item = item[0]
             item_flatten = tf.nest.flatten(item)
             for op in self.ops:
                 item_flatten = op.run(item_flatten)
             item_aug = tf.nest.pack_sequence_as(item, item_flatten)
+
+            if len(item_aug) == 1:
+                item_aug, = item_aug
 
             return item_aug
 
@@ -51,32 +54,32 @@ class Augmentor(object):
     def rotate270(self, probability=1):
         self.ops.append(Rotate270(self.signature_flatten, self.image, self.label, probability))
 
-    # def rotate(self, angle, probability=1):
-    #     self.ops.append(Rotate(self.signature_flatten, self.image, self.label, angle, probability))
+    def rotate(self, angle, probability=1):
+        self.ops.append(Rotate(self.signature_flatten, self.image, self.label, angle, probability))
 
-    # def random_rotate(self, probability=1):
-    #     self.ops.append(RandomRotate(self.signature_flatten, self.image, self.label, probability))
+    def random_rotate(self, probability=1):
+        self.ops.append(RandomRotate(self.signature_flatten, self.image, self.label, probability))
 
-    # def random_crop(self, scale_range, probability=1, preserve_aspect_ratio=False):
-    #     r = SyncRandomCropRunner(probability, scale_range, preserve_aspect_ratio)
-    #     for k in self.image:
-    #         r.sync(k, RandomCrop('bilinear'))
-    #     for k in self.label:
-    #         r.sync(k, RandomCrop('nearest'))
-    #     self.funcs.append(r)
+    def translate(self, offset, probability=1):
+        self.ops.append(Translate(self.signature_flatten, self.image, self.label, offset, probability))
+
+    def random_translate(self, translation_range=[50, 150], probability=1):
+        self.ops.append(RandomTranslate(self.signature_flatten, self.image, self.label, translation_range, probability))
+    
+    def random_crop(self, scale_range, preserve_aspect_ratio=False, probability=1):
+        self.ops.append(RandomCrop(self.signature_flatten, self.image, self.label, scale_range, preserve_aspect_ratio, probability))
     
     def gaussian_blur(self, sigma=2, probability=1):
         self.ops.append(GaussianBlur(self.signature_flatten, self.image, self.label, sigma, probability))
 
-    # def elastic_deform(self, strength, scale, probability=1):
-    #     r = SyncElasticDeformRunner(probability, strength, scale)
-    #     for k in self.image:
-    #         r.sync(k, ElasticDeform('bilinear'))
-    #     for k in self.label:
-    #         r.sync(k, ElasticDeform('nearest'))
-    #     self.funcs.append(r)
+    def elastic_deform(self, scale, strength, probability=1):
+        self.ops.append(ElasticDeform(self.signature_flatten, self.image, self.label, scale, strength, probability))
 
+    def random_contrast(self, contrast_range=[0.6, 1.4], probability=1):
+        self.ops.append(RandomContrast(self.signature_flatten, self.image, self.label, contrast_range, probability))
     
+    def random_gamma(self, gamma_range=[0.5, 1.5], probability=1):
+        self.ops.append(RandomGamma(self.signature_flatten, self.image, self.label, gamma_range, probability))
 
 if __name__ == "__main__":
     import numpy as np
