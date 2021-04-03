@@ -3,8 +3,8 @@
 An image augmentation library for tensorflow. The libray is designed to be easily used with tf.data.Dataset. The augmentor accepts tf.data.Dataset object or a nested tuple of numpy array. 
 
 ## Augmentations
-| original | flip | rotation | translation
-|:---------|:---------|:---------| : -------- |
+| original | flip | rotation | translation |
+|:---------|:---------|:---------| :-------- |
 | ![pa_original](/samples/doc/pa_original.jpg) | ![demo_flip](/demo/demo_flip.png) | ![demo_rotation](/demo/demo_rotation.png) | ![demo_translation](/demo/demo_translation.png) |
 | crop | elactic deform |  |  |
 | ![demo_crop](/demo/demo_crop.png) | ![demo_elastic](/demo/demo_elastic.png) |  |  |
