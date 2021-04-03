@@ -4,7 +4,6 @@ An image augmentation library for tensorflow. The libray is designed to be easil
 
 ## Augmentations
 | **Original** | **Flip** | **Rotation** | **Translation** |
-|:---------|:---------|:---------| :-------- |
 | ![original](/demo/image/plant_grid.png) | ![demo_flip](/demo/demo_flip.png) | ![demo_rotation](/demo/demo_rotation.png) | ![demo_translation](/demo/demo_translation.png) |
 | **Crop** | **Elactic Deform** |  |  |
 | ![demo_crop](/demo/demo_crop.png) | ![demo_elastic](/demo/demo_elastic.png) |  |  |
