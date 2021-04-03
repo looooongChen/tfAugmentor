@@ -11,6 +11,8 @@ An image augmentation library for tensorflow. The libray is designed to be easil
 | **Gaussian Blur**  | **Contrast** | **Gamma** | 
 | ![demo_blur](/demo/demo_blur.png) | ![demo_contrast](/demo/demo_contrast.png) | ![demo_gamma](/demo/demo_gamma.png) |  |
 
+## Demo
+
 | **Random Rotation** | **Random Translation** | **Random Crop** |
 |:---------|:---------|:---------| 
 | ![demo_ratation](/demo/gif/demo_random_rotation.gif) | ![demo_translation](/demo/gif/demo_random_translation.gif) | ![demo_crop](/demo/gif/demo_random_crop.gif) |
@@ -18,13 +20,6 @@ An image augmentation library for tensorflow. The libray is designed to be easil
 | ![demo_contrast](/demo/gif/demo_random_contrast.gif) | ![demo_gamma](/demo/gif/demo_random_gamma.gif) | ![demo_elastic](/demo/gif/demo_random_elastic.gif) |
 
 
-
-## Deforming augmentations
-| Homographic transform | Euclid transform |
-|:---------|:--------------------|
-| ![da_homographic](/samples/doc/da_homographic.gif) | ![da_euclid](/samples/doc/da_euclid.gif) |
-| Elastic deformation | Random distortion |
-| ![da_elastic](/samples/doc/da_elastic.gif) | ![da_distortion](/samples/doc/da_distortion.gif) |
 
 ## Installation
 tfAugmentor is written in Python and can be easily installed via:
