@@ -63,16 +63,16 @@ class Augmentor(object):
     def translate(self, offset, probability=1):
         self.ops.append(Translate(self.signature_flatten, self.image, self.label, offset, probability))
 
-    def random_translate(self, translation_range=[50, 150], probability=1):
+    def random_translate(self, translation_range=[-100, 100], probability=1):
         self.ops.append(RandomTranslate(self.signature_flatten, self.image, self.label, translation_range, probability))
     
-    def random_crop(self, scale_range, preserve_aspect_ratio=False, probability=1):
+    def random_crop(self, scale_range=[0.5, 0.8], preserve_aspect_ratio=False, probability=1):
         self.ops.append(RandomCrop(self.signature_flatten, self.image, self.label, scale_range, preserve_aspect_ratio, probability))
     
     def gaussian_blur(self, sigma=2, probability=1):
         self.ops.append(GaussianBlur(self.signature_flatten, self.image, self.label, sigma, probability))
 
-    def elastic_deform(self, scale, strength, probability=1):
+    def elastic_deform(self, scale=10, strength=200, probability=1):
         self.ops.append(ElasticDeform(self.signature_flatten, self.image, self.label, scale, strength, probability))
 
     def random_contrast(self, contrast_range=[0.6, 1.4], probability=1):

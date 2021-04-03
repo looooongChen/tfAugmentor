@@ -2,17 +2,30 @@
 # tfAugmentor
 An image augmentation library for tensorflow. The libray is designed to be easily used with tf.data.Dataset. The augmentor accepts tf.data.Dataset object or a nested tuple of numpy array. 
 
-## new features
-- support tf 2.x
-- API change for easier use, can directly process tf.data.Dataset object
+## Augmentations
+| original | flip | rotation | translation
+|:---------|:---------|:---------| : -------- |
+| ![pa_original](/samples/doc/pa_original.jpg) | ![demo_flip](/demo/demo_flip.png) | ![demo_rotation](/demo/demo_rotation.png) | ![demo_translation](/demo/demo_translation.png) |
+| crop | elactic deform |  |  |
+| ![demo_crop](/demo/demo_crop.png) | ![demo_elastic](/demo/demo_elastic.png) |  |  |
+| gaussian blur  | contrast | gamma | 
+| ![demo_blur](/demo/demo_blur.png) | ![demo_contrast](/demo/demo_contrast.png) | ![demo_gamma](/demo/demo_gamma.png) |  |
+
+
+## Deforming augmentations
+| Homographic transform | Euclid transform |
+|:---------|:--------------------|
+| ![da_homographic](/samples/doc/da_homographic.gif) | ![da_euclid](/samples/doc/da_euclid.gif) |
+| Elastic deformation | Random distortion |
+| ![da_elastic](/samples/doc/da_elastic.gif) | ![da_distortion](/samples/doc/da_distortion.gif) |
 
 ## Installation
 tfAugmentor is written in Python and can be easily installed via:
 ```python
 pip install tfAugmentor
 ```
-To run tfAugmentor properly, the following library should be installed as well:
-- tensorflow (developed under tf 2.1), should work with 2.x version, 1.x version is not supported
+To run tfAugmentor properly, the following library should be installed:
+- tensorflow (developed under tf 2.4), should work with 2.x version, 1.x version is not supported
 - numpy (currently numpy=1.20 leads error of tf.meshgrid, please use another version)
 
 ## Quick Start
@@ -26,7 +39,7 @@ class Augmentor(object):
 		...
 ```
 
-- signature: a nested tuple of string, representing the structure of the dataset to be processesd e.g. ('image', 'segmentation')
+- signature: a nested tuple of string, representing the structure of the dataset to be processesd e.g. ('image', 'segmentation') or keys of a dictionary, if your dataset is in a python dictionary form
 - image, label: only the items in these two lists will be augmented, segmentation masks should be put in the label list so that the labels will kept valid
 
 ### simple example
@@ -34,7 +47,7 @@ class Augmentor(object):
 import tfAugmentor as tfaug
 
 # new tfAugmentor object
-aug = tfaug.Augmentor(('image', 'semantic_mask'), image=['image'], label=['semantic_mask'])
+aug = tfaug.Augmentor(signature=('image', 'semantic_mask'), image=['image'], label=['semantic_mask'])
 
 # add augumentation operations
 aug.flip_left_right(probability=0.5)
@@ -48,19 +61,19 @@ Y_semantic_mask = ... # shape [batch, height, width, 1]
 # create tf.data.Dataset object
 tf_dataset = tf.data.Dataset.from_tensor_slices((X_image, Y_semantic_mask)))
 # do the actual augmentation
-ds1 = aug(tf_dataset, keep_size=True)
+ds1 = aug(tf_dataset)
 
 # or you can directly pass the numpy arrays, a tf.data.Dataset object will be returned 
 ds2 = aug((X_image, Y_semantic_mask)), keep_size=True)
 ```
 
-If you pass the data as a python dictionary, the signature is not necessary any more. For example:
+If you pass the data as a python dictionary, the signature should be the list/tuple of keys. For example:
 
 ```python
 import tfAugmentor as tfaug
 
 # new tfAugmentor object
-aug = tfaug.Augmentor(image=['image'], label=['semantic_mask'])
+aug = tfaug.Augmentor(signature=('image', 'semantic_mask'), image=['image'], label=['semantic_mask'])
 
 # add augumentation operations
 aug.flip_left_right(probability=0.5)
@@ -76,16 +89,16 @@ ds_dict = {'image': X_image,
 # create tf.data.Dataset object
 tf_dataset = tf.data.Dataset.from_tensor_slices(ds_dict)
 # do the actual augmentation
-ds1 = aug(tf_dataset, keep_size=True)
+ds1 = aug(tf_dataset)
 
 # or directly pass the data
-ds2 = aug(ds_dict, keep_size=True)
+ds2 = aug(ds_dict)
 ```
 
 
 Note:
 - All added augmentations will be executed one by one, but you can create multiply tfAugmentor to relize different augmentations in parallel
-- all data should have a 4-D shape of `[batch, height, width, channels]` with the first dimension being the same, unprocessed items (itmes not in the 'image' or 'label' list) can have any dataset shape  
+- itmes not in the 'image' or 'label' list will be untouched
 
 ### complex example
 
@@ -110,8 +123,8 @@ Y_class = ... # shape [1000 x 1]
 # create tf.data.Dataset object
 ds_origin = tf.data.Dataset.from_tensor_slices(((X_rgb, X_depth), (Y_semantic_mask, Y_class))))
 # do the actual augmentation
-ds1 = aug1(ds_origin, keep_size=True)
-ds2 = aug2(ds_origin, keep_size=True)
+ds1 = aug1(ds_origin)
+ds2 = aug2(ds_origin)
 # combine them
 ds = ds_origin.concatenate(ds1)
 ds = ds.concatenate(ds1)
@@ -122,27 +135,45 @@ ds = ds.concatenate(ds1)
 
 ### Mirroring
 ```python
-aug.flip_left_right(probability) # flip the image left right  
-aug.flip_up_down(probability) # flip the image up down
+aug.flip_left_right(probability=1) # flip the image left right  
+aug.flip_up_down(probability=1) # flip the image up down
 ```
-### Rotating
+### Rotation
 ```python
-a.rotate90(probability) # rotate by 90 degree clockwise
-a.rotate180(probability) # rotate by 180 degree clockwise
-a.rotate270(probability) # rotate by 270 degree clockwise
-a.rotate(angle, probability) # rotate by *angel* degree clockwise
-a.random_rotate(probability) # randomly rotate the image
-```
-### crop and resize
-```python
-a.random_crop(scale_range=(0.5, 0.8), probability) # randomly crop a sub-image and resize to the same size of the original image
-a.random_crop(scale_range=0.8, probability) # fixed crop size, random crop position
+a.rotate90(probability=1) # rotate by 90 degree clockwise
+a.rotate180(probability=1) # rotate by 180 degree clockwise
+a.rotate270(probability=1) # rotate by 270 degree clockwise
+a.rotate(angle, probability=1) # rotate by *angel* degree, angle: scale in degree
+a.random_rotate(probability=1) # randomly rotate the image
 ```
 
-### elastic deformation
+### Translation
+```python
+a.translate(offset, probability=1): # offset: [x, y]
+a.random_translate(translation_range=[-100, 100], probability=1):
 ```
-a.elastic_deform(strength, scale, probability)
+
+### Crop and Resize
+```python
+a.random_crop(scale_range=([0.5, 0.8], preserve_aspect_ratio=False, probability=1) # randomly crop a sub-image and resize to the original image size
 ```
+
+### Elastic Deformation
+```python
+a.elastic_deform(scale=10, strength=200, probability=1)
+```
+
+### Photometric Adjustment
+```python
+a.random_contrast(contrast_range=[0.6, 1.4], probability=1)
+a.random_gamma(gamma_range=[0.5, 1.5], probability=1)
+```
+
+### Noise
+```python
+a.gaussian_blur(sigma=2, probability=1)
+```
+
 
 ## Caution
 - If .batch() of tf.data.Dataset is used before augmentation, please set drop_remainder=True. Oherwise, the batch_size will be set to None. The augmention of tfAgmentor requires the batch_size dimension    
