@@ -11,13 +11,12 @@ An image augmentation library for tensorflow. The libray is designed to be easil
 | **Gaussian Blur**  | **Contrast** | **Gamma** | 
 | ![demo_blur](/demo/demo_blur.png) | ![demo_contrast](/demo/demo_contrast.png) | ![demo_gamma](/demo/demo_gamma.png) |  |
 
-| **Original** | **Flip** | **Rotation** | **Translation** |
-|:---------|:---------|:---------| :-------- |
-| ![original](/demo/image/plant_grid.png) | ![demo_flip](/demo/demo_flip.png) | ![demo_rotation](/demo/demo_rotation.png) | ![demo_translation](/demo/demo_translation.png) |
-| **Crop** | **Elactic Deform** |  |  |
-| ![demo_crop](/demo/demo_crop.png) | ![demo_elastic](/demo/demo_elastic.png) |  |  |
-| **Gaussian Blur**  | **Contrast** | **Gamma** | 
-| ![demo_blur](/demo/demo_blur.png) | ![demo_contrast](/demo/demo_contrast.png) | ![demo_gamma](/demo/demo_gamma.png) |  |
+| **Random Rotation** | **Random Translation** | **Random Crop** |
+|:---------|:---------|:---------| 
+| ![demo_ratation](/demo/gif/demo_random_rotation.gif) | ![demo_translation](/demo/gif/demo_random_translation.gif) | ![demo_crop](/demo/gif/demo_random_crop.gif) |
+| **Random Contrast** | **Random Gamma** | **Elastic Deform** |
+| ![demo_contrast](/demo/gif/demo_random_contrast.gif) | ![demo_gamma](/demo/gif/demo_random_gamma.gif) | ![demo_elastic](/demo/gif/demo_random_elastic.gif) |
+
 
 
 ## Deforming augmentations
