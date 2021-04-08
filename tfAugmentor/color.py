@@ -20,7 +20,7 @@ def adjust_contrast(image, contrast_factor):
 
     image_c = tf.unstack(image_c, axis=0)
     contrast_factor = tf.unstack(contrast_factor, axis=0)
-    image_c = [tf.expand_dims(tf.image.adjust_contrast(img, f), axis=0) for img, f in zip(image_c, contrast_factor)]
+    image_c = [tf.image.adjust_contrast(img, f) for img, f in zip(image_c, contrast_factor)]
     image_c = tf.concat(image_c, axis=0)
 
     return image_c
@@ -46,7 +46,7 @@ def adjust_gamma(image, gamma):
     
     image_c = tf.unstack(image_c, axis=0)
     gamma = tf.unstack(gamma, axis=0)
-    image_c = [tf.expand_dims(tf.image.adjust_gamma(img, f), axis=0) for img, f in zip(image_c, gamma)]
+    image_c = [tf.image.adjust_gamma(img, f) for img, f in zip(image_c, gamma)]
     image_c = tf.concat(image_c, axis=0)
 
     return image_c
