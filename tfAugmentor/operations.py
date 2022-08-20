@@ -69,7 +69,8 @@ class SimpleOp(Op):
                 self.ops.append(lambda x: x)
 
     def run(self, item_flatten):
-        occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+        rng = tf.random.get_global_generator()
+        occur = tf.less(rng.uniform([], 0, 1), self.probability)
         item_flatten = [tf.cond(occur, lambda : op(item), lambda : item) for op, item in zip(self.ops, item_flatten)]
         return item_flatten
 
@@ -124,9 +125,10 @@ class RandomRotate(Op):
 
     def run(self, item_flatten):
         if self.info_idx is not None:
-            occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+            rng = tf.random.get_global_generator()
+            occur = tf.less(rng.uniform([], 0, 1), self.probability)
             batch_size = item_flatten[self.info_idx].get_shape()[0] if item_flatten[self.info_idx].get_shape().ndims == 4 else 1
-            angle = tf.random.uniform([batch_size], 0, 360)
+            angle = rng.uniform([batch_size], 0, 360)
             item_flatten = [tf.cond(occur, lambda : op(item, angle), lambda : item) for op, item in zip(self.ops, item_flatten)]
         return item_flatten
 
@@ -162,9 +164,10 @@ class RandomTranslate(Op):
 
     def run(self, item_flatten):
         if self.info_idx is not None:
-            occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+            rng = tf.random.get_global_generator()
+            occur = tf.less(rng.uniform([], 0, 1), self.probability)
             batch_size = item_flatten[self.info_idx].get_shape()[0] if item_flatten[self.info_idx].get_shape().ndims == 4 else 1
-            offset = tf.random.uniform([batch_size, 2], self.translation_range[0], self.translation_range[1])
+            offset = rng.uniform([batch_size, 2], self.translation_range[0], self.translation_range[1])
             item_flatten = [tf.cond(occur, lambda : op(item, offset), lambda : item) for op, item in zip(self.ops, item_flatten)]
         return item_flatten
 
@@ -200,18 +203,20 @@ class RandomCrop(Op):
                 self.ops.append(lambda x, bbx: x)
     
     def crop_bbx(self, batch_size):
-        sz = tf.random.uniform([batch_size, 2], self.scale_range[0], self.scale_range[1])
+        rng = tf.random.get_global_generator()
+        sz = rng.uniform([batch_size, 2], self.scale_range[0], self.scale_range[1])
         if self.preserve_aspect_ratio:
-            sz = tf.random.uniform([batch_size, 1], self.scale_range[0], self.scale_range[1])
+            sz = rng.uniform([batch_size, 1], self.scale_range[0], self.scale_range[1])
             sz = tf.concat([sz, sz], axis=-1)
         else:
-            sz = tf.random.uniform([batch_size, 2], self.scale_range[0], self.scale_range[1])
-        offset = tf.multiply(1-sz, tf.random.uniform([batch_size, 2], 0, 1))
+            sz = rng.uniform([batch_size, 2], self.scale_range[0], self.scale_range[1])
+        offset = tf.multiply(1-sz, rng.uniform([batch_size, 2], 0, 1))
         return tf.concat([offset, offset+sz], axis=1)
 
     def run(self, item_flatten):
         if self.info_idx is not None:
-            occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+            rng = tf.random.get_global_generator()
+            occur = tf.less(rng.uniform([], 0, 1), self.probability)
             batch = item_flatten[self.info_idx].get_shape()[0] if item_flatten[self.info_idx].get_shape().ndims == 4 else 1
             bbx = self.crop_bbx(batch)
             item_flatten = [tf.cond(occur, lambda : op(item, bbx), lambda : item) for op, item in zip(self.ops, item_flatten)]
@@ -239,7 +244,8 @@ class ElasticDeform(Op):
 
     def run(self, item_flatten):
         if self.info_idx is not None:
-            occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+            rng = tf.random.get_global_generator()
+            occur = tf.less(rng.uniform([], 0, 1), self.probability)
             flow = elastic_flow(item_flatten[self.info_idx].get_shape(), self.scale, self.strength)
             item_flatten = [tf.cond(occur, lambda : op(item, flow), lambda : item) for op, item in zip(self.ops, item_flatten)]
         return item_flatten
@@ -260,9 +266,10 @@ class RandomContrast(Op):
 
     def run(self, item_flatten):
         if self.info_idx is not None: 
-            occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+            rng = tf.random.get_global_generator()
+            occur = tf.less(rng.uniform([], 0, 1), self.probability)
             batch_size = item_flatten[self.info_idx].get_shape()[0] if item_flatten[self.info_idx].get_shape().ndims == 4 else 1
-            contrast = tf.random.uniform([batch_size], self.contrast_range[0], self.contrast_range[1])
+            contrast = rng.uniform([batch_size], self.contrast_range[0], self.contrast_range[1])
             item_flatten = [tf.cond(occur, lambda : op(item, contrast), lambda : item) for op, item in zip(self.ops, item_flatten)]
         return item_flatten
 
@@ -283,8 +290,9 @@ class RandomGamma(Op):
 
     def run(self, item_flatten):
         if self.info_idx is not None: 
-            occur = tf.less(tf.random.uniform([], 0, 1), self.probability)
+            rng = tf.random.get_global_generator()
+            occur = tf.less(rng.uniform([], 0, 1), self.probability)
             batch_size = item_flatten[self.info_idx].get_shape()[0] if item_flatten[self.info_idx].get_shape().ndims == 4 else 1
-            gamma = tf.random.uniform([batch_size], self.gamma_range[0], self.gamma_range[1])
+            gamma = rng.uniform([batch_size], self.gamma_range[0], self.gamma_range[1])
             item_flatten = [tf.cond(occur, lambda : op(item, gamma), lambda : item) for op, item in zip(self.ops, item_flatten)]
         return item_flatten
