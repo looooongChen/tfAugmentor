@@ -162,11 +162,13 @@ def elastic_flow(size, scale=10, strength=100):
     ''' size: shape of a 3D/4D tensor '''
 
     batch = size[0] if size.ndims == 4 else 1 
-
-    flow = tf.random.uniform([batch,
-                              tf.math.floordiv(size[-3], scale),
-                              tf.math.floordiv(size[-2], scale),
-                              2], -1, 1)
+    rng = tf.random.get_global_generator()
+    flow = rng.uniform([
+                            batch,
+                            tf.math.floordiv(size[-3], scale),
+                            tf.math.floordiv(size[-2], scale),
+                            2,
+                        ], -1, 1)
     flow = gaussian_blur(flow, 5) * strength
     flow = resize_image(flow, size[-3:-1], interpolation='bilinear')
 

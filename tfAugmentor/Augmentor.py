@@ -5,12 +5,13 @@ import numpy as np
 
 class Augmentor(object):
 
-    def __init__(self, signature, image=[], label=[]):
+    def __init__(self, signature, image=[], label=[], num_parallel_calls=None):
         self.signature = signature 
         self.signature_flatten = tf.nest.flatten(self.signature)
         self.image = image
         self.label = label
         self.ops = []
+        self.num_parallel_calls = num_parallel_calls
         # self.image_size = image_size
     
     def __call__(self, dataset):
@@ -35,7 +36,7 @@ class Augmentor(object):
             if not isinstance(dataset, tf.data.Dataset):
                 dataset = tf.data.Dataset.from_tensor_slices(dataset)
             # return dataset.map(tf.autograph.experimental.do_not_convert(transform))
-            return dataset.map(transform)
+            return dataset.map(transform, self.num_parallel_calls)
         else:
             return None
     
